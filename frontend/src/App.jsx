@@ -401,7 +401,7 @@ export default function App() {
     } : c));
 
     try {
-      const response = await fetch(`https://ancora-app-1.onrender.com/api/items/${itemId}`, { 
+      const response = await fetch(`https://ancora-app-1.onrender.com/api/challenges/items/${itemId}`, { 
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ completed: newCompletedState, challengeId: challengeId })
