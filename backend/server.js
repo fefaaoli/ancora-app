@@ -216,18 +216,32 @@ app.put('/api/challenges/items/:itemId', (req, res) => {
     const { itemId } = req.params;
     const { completed, challengeId } = req.body;
 
+    // 1. Atualiza o status do item clicado
     db.query('UPDATE itens_desafio SET concluido = ? WHERE id = ?', [completed ? 1 : 0, itemId], (err) => {
         if (err) return res.status(500).json({ error: err.message });
 
-        db.query('SELECT COUNT(*) as pendentes FROM itens_desafio WHERE desafio_id = ? AND concluido = 0', [challengeId], (err, results) => {
+        // 2. Verifica se ainda existem itens pendentes E obtém informações do desafio atual
+        db.query('SELECT desafios.dia_atual, desafios.total_days, (SELECT COUNT(*) FROM itens_desafio WHERE desafio_id = ? AND concluido = 0) as pendentes FROM desafios WHERE id = ?', 
+        [challengeId, challengeId], (err, results) => {
             if (err) return res.status(500).json({ error: err.message });
+            if (results.length === 0) return res.status(404).json({ error: "Desafio não encontrado" });
 
-            if (results[0].pendentes === 0) {
-                db.query('UPDATE desafios SET dia_atual = dia_atual + 1 WHERE id = ?', [challengeId], () => {
-                    db.query('UPDATE itens_desafio SET concluido = 0 WHERE desafio_id = ?', [challengeId], () => {
-                        res.json({ message: "Dia concluído e avançado!", advanced: true });
+            const { dia_atual, total_days, pendentes } = results[0];
+
+            // 3. Se pendentes for 0, o dia acabou!
+            if (pendentes === 0) {
+                // Só avançamos se ainda não tivermos atingido o total de dias
+                if (dia_atual < total_days) {
+                    db.query('UPDATE desafios SET dia_atual = dia_atual + 1 WHERE id = ?', [challengeId], () => {
+                        // Reseta todos os itens para 0 (incompleto) para o próximo dia
+                        db.query('UPDATE itens_desafio SET concluido = 0 WHERE desafio_id = ?', [challengeId], () => {
+                            res.json({ message: "Dia concluído e avançado!", advanced: true });
+                        });
                     });
-                });
+                } else {
+                    // Desafio completo! (Pode adicionar uma lógica de 'status: concluído' se tiver coluna)
+                    res.json({ message: "Desafio finalizado com sucesso!", advanced: true, finished: true });
+                }
             } else {
                 res.json({ message: "Status atualizado!", advanced: false });
             }
