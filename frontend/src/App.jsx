@@ -20,8 +20,6 @@ import {
   Info
 } from 'lucide-react';
 
-const API_URL = 'https://ancora-app-1.onrender.com';
-
 const MOTIVATIONAL_QUOTES = [
   "Você não precisa ser perfeita para continuar evoluindo.",
   "O autocuidado é uma jornada lenta, gentil e sem punições.",
@@ -111,28 +109,28 @@ export default function App() {
       const timeoutId = setTimeout(() => controller.abort(), 2000);
 
       // 1. Buscar Check-ins
-      const resCheck = await fetch('${API_URL}/api/checkins', { signal: controller.signal });
+      const resCheck = await fetch('[https://ancora-app-1.onrender.com/api/checkins](https://ancora-app-1.onrender.com/api/checkins)', { signal: controller.signal });
       if (resCheck.ok) {
         const data = await resCheck.json();
         setCheckIns(data);
       }
       
       // 2. Buscar Episódios
-      const resEp = await fetch('${API_URL}/api/episodes', { signal: controller.signal });
+      const resEp = await fetch('[https://ancora-app-1.onrender.com/api/episodes](https://ancora-app-1.onrender.com/api/episodes)', { signal: controller.signal }); 
       if (resEp.ok) {
         const data = await resEp.json();
         setEpisodes(data);
       }
 
       // 3. Buscar Desafios Reais
-      const resChall = await fetch('${API_URL}/api/challenges', { signal: controller.signal });
+      const resChall = await fetch('[https://ancora-app-1.onrender.com/api/challenges](https://ancora-app-1.onrender.com/api/challenges)', { signal: controller.signal }); 
       if (resChall.ok) {
         const data = await resChall.json();
         setChallenges(data);
       }
 
       // 4. Buscar Plano de Recuperação
-      const resPlan = await fetch('${API_URL}/api/recovery-plan', { signal: controller.signal });
+      const resPlan = await fetch('[https://ancora-app-1.onrender.com/api/recovery-plan](https://ancora-app-1.onrender.com/api/recovery-plan)', { signal: controller.signal }); 
       if (resPlan.ok) {
         const data = await resPlan.json();
         if (data && data.usuario_id) {
@@ -147,7 +145,7 @@ export default function App() {
       }
 
       // 5. Buscar Diário
-      const resDiary = await fetch('${API_URL}/api/diary', { signal: controller.signal });
+      const resDiary = await fetch('[https://ancora-app-1.onrender.com/api/diary](https://ancora-app-1.onrender.com/api/diary)', { signal: controller.signal }); 
       if (resDiary.ok) {
         const data = await resDiary.json();
         setDiaryEntries(data.map(d => ({
@@ -159,7 +157,7 @@ export default function App() {
       }
 
       // 6. Buscar Pequenas Vitórias
-      const resVic = await fetch('${API_URL}/api/victories', { signal: controller.signal });
+      const resVic = await fetch('[https://ancora-app-1.onrender.com/api/victories](https://ancora-app-1.onrender.com/api/victories)', { signal: controller.signal }); 
       if (resVic.ok) {
         const data = await resVic.json();
         setSmallVictories(data.map(v => ({
@@ -373,9 +371,9 @@ export default function App() {
 
   const handleDeleteChallenge = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/api/challenges/${id}`, {
+      const response = await fetch(`[https://ancora-app-1.onrender.com/api/challenges/${id}](https://ancora-app-1.onrender.com/api/challenges/${id})`, { 
         method: 'DELETE'
-      });
+      });  
       if (response.ok) {
         await fetchAllData();
         triggerNotification("Desafio removido de forma persistente do MySQL! 💜");
@@ -407,7 +405,7 @@ export default function App() {
     }));
 
     try {
-      await fetch(`${API_URL}/api/challenges/items/${itemId}`, {
+      await fetch(`[https://ancora-app-1.onrender.com/api/items/${itemId}](https://ancora-app-1.onrender.com/api/items/${itemId})`, { 
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ completed: newCompletedState })
@@ -436,7 +434,7 @@ export default function App() {
     };
 
     try {
-      const response = await fetch('${API_URL}/api/checkins', {
+      const response = await fetch('[https://ancora-app-1.onrender.com/api/checkins](https://ancora-app-1.onrender.com/api/checkins)', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newCheck)
@@ -491,7 +489,7 @@ export default function App() {
     };
     
     try {
-      const response = await fetch('${API_URL}http://localhost:3001/api/episodes', {
+      const response = await fetch('[https://ancora-app-1.onrender.com/api/episodes](https://ancora-app-1.onrender.com/api/episodes)', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newEp)
@@ -537,7 +535,7 @@ export default function App() {
     };
 
     try {
-      const response = await fetch('${API_URL}/api/victories', {
+      const response = await fetch('[https://ancora-app-1.onrender.com/api/victories](https://ancora-app-1.onrender.com/api/victories)', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newVic)
@@ -559,7 +557,7 @@ export default function App() {
   const handleUpdateRecoveryPlan = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('${API_URL}/api/recovery-plan', {
+      const response = await fetch('[https://ancora-app-1.onrender.com/api/recovery-plan](https://ancora-app-1.onrender.com/api/recovery-plan)', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -588,7 +586,7 @@ export default function App() {
     };
 
     try {
-      const response = await fetch('${API_URL}/api/diary', {
+      const response = await fetch('[https://ancora-app-1.onrender.com/api/diary](https://ancora-app-1.onrender.com/api/diary)', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newEntry)
@@ -661,7 +659,7 @@ export default function App() {
     };
 
     try {
-      const response = await fetch('${API_URL}/api/challenges', {
+      const response = await fetch('[https://ancora-app-1.onrender.com/api/challenges](https://ancora-app-1.onrender.com/api/challenges)', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(challengePayload)
