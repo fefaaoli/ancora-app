@@ -411,7 +411,7 @@ export default function App() {
       // Se o backend avançou o dia, recarrega tudo
       if (data.advanced) {
               await fetchAllData(); 
-              triggerNotification("🎉 Tarefa finalizada! Dia concluído com sucesso! 💜");
+              triggerNotification("Dia concluído com sucesso! 💜");
             }
           } catch (err) {
             console.warn("Erro ao sincronizar status.");
