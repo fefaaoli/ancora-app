@@ -410,13 +410,14 @@ export default function App() {
       const data = await response.json();
       // Se o backend avançou o dia, recarrega tudo
       if (data.advanced) {
-        triggerNotification("🎉 Tarefa finalizada! Dia concluído com sucesso!");
-        await fetchAllData(); 
-      }
-    } catch (err) {
-      console.warn("Erro ao sincronizar status.");
-    }
-  };
+              await fetchAllData(); 
+              triggerNotification("🎉 Tarefa finalizada! Dia concluído com sucesso! 💜");
+            }
+          } catch (err) {
+            console.warn("Erro ao sincronizar status.");
+            triggerNotification("Erro na sincronização com o servidor. ⚠️");
+          }
+        };
 
   const triggerNotification = (msg) => {
     setShowSuccessToast(msg);
