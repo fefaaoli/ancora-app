@@ -386,7 +386,7 @@ export default function App() {
 
   const progressPercent = Math.min(100, (calculatedMetrics.currentStreak / targetDays) * 100);
 
-    const handleToggleChallengeItem = async (challengeId, itemId) => {
+  const handleToggleChallengeItem = async (challengeId, itemId) => {
     const targetChallenge = challenges.find(c => c.id === challengeId);
     if (!targetChallenge) return;
     const targetItem = targetChallenge.checklist.find(i => i.id === itemId);
@@ -394,34 +394,27 @@ export default function App() {
 
     const newCompletedState = !targetItem.completed;
 
-    // Atualização otimista (UI muda na hora)
-    setChallenges(challenges.map(c => {
-      if (c.id === challengeId) {
-        return {
-          ...c,
-          checklist: c.checklist.map(item => item.id === itemId ? { ...item, completed: newCompletedState } : item)
-        };
-      }
-      return c;
-    }));
+    // Atualização otimista
+    setChallenges(challenges.map(c => c.id === challengeId ? {
+      ...c,
+      checklist: c.checklist.map(item => item.id === itemId ? { ...item, completed: newCompletedState } : item)
+    } : c));
 
     try {
-      const response = await fetch(`https://ancora-app-1.onrender.com/api/challenges/items/${itemId}`, { 
+      const response = await fetch(`https://ancora-app-1.onrender.com/api/items/${itemId}`, { 
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ completed: newCompletedState, challengeId: challengeId }) // enviando o challengeId
+        body: JSON.stringify({ completed: newCompletedState, challengeId: challengeId })
       });
       
       const data = await response.json();
-      
-      // Se o backend avisar que avançou o dia, recarregamos tudo
+      // Se o backend avançou o dia, recarrega tudo
       if (data.advanced) {
-        triggerNotification("🎉 Tarefa finalizada! Dia concluído com sucesso!");
+        alert("🎉 Tarefa finalizada! Dia concluído com sucesso!");
         await fetchAllData(); 
       }
     } catch (err) {
-      console.warn("Erro ao sincronizar status do checklist.");
-      triggerNotification("Erro na sincronização com o servidor.");
+      console.warn("Erro ao sincronizar status.");
     }
   };
 

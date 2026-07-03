@@ -212,20 +212,19 @@ app.delete('/api/challenges/:id', (req, res) => {
     });
 });
 
-app.put('/api/challenges/items/:itemId', async (req, res) => {
+app.put('/api/challenges/items/:itemId', (req, res) => {
     const { itemId } = req.params;
-    const { completed, desafioId } = req.body; // Precisamos enviar o desafioId do front
+    const { completed, challengeId } = req.body;
 
-    // 1. Atualiza o item
     db.query('UPDATE itens_desafio SET concluido = ? WHERE id = ?', [completed ? 1 : 0, itemId], (err) => {
         if (err) return res.status(500).json({ error: err.message });
 
-        // 2. Verifica se ainda existem itens pendentes para este desafio
-        db.query('SELECT COUNT(*) as pendentes FROM itens_desafio WHERE desafio_id = ? AND concluido = 0', [desafioId], (err, results) => {
+        db.query('SELECT COUNT(*) as pendentes FROM itens_desafio WHERE desafio_id = ? AND concluido = 0', [challengeId], (err, results) => {
+            if (err) return res.status(500).json({ error: err.message });
+
             if (results[0].pendentes === 0) {
-                // 3. SE PENDENTES == 0, avança o dia e reseta os itens
-                db.query('UPDATE desafios SET dia_atual = dia_atual + 1 WHERE id = ?', [desafioId], () => {
-                    db.query('UPDATE itens_desafio SET concluido = 0 WHERE desafio_id = ?', [desafioId], () => {
+                db.query('UPDATE desafios SET dia_atual = dia_atual + 1 WHERE id = ?', [challengeId], () => {
+                    db.query('UPDATE itens_desafio SET concluido = 0 WHERE desafio_id = ?', [challengeId], () => {
                         res.json({ message: "Dia concluído e avançado!", advanced: true });
                     });
                 });
