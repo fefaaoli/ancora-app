@@ -212,12 +212,27 @@ app.delete('/api/challenges/:id', (req, res) => {
     });
 });
 
-app.put('/api/challenges/items/:itemId', (req, res) => {
+app.put('/api/challenges/items/:itemId', async (req, res) => {
     const { itemId } = req.params;
-    const { completed } = req.body;
-    db.query('UPDATE itens_desafio SET concluido = ? WHERE id = ?', [completed ? 1 : 0, itemId], (err, result) => {
+    const { completed, desafioId } = req.body; // Precisamos enviar o desafioId do front
+
+    // 1. Atualiza o item
+    db.query('UPDATE itens_desafio SET concluido = ? WHERE id = ?', [completed ? 1 : 0, itemId], (err) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: "Status do item atualizado com sucesso!" });
+
+        // 2. Verifica se ainda existem itens pendentes para este desafio
+        db.query('SELECT COUNT(*) as pendentes FROM itens_desafio WHERE desafio_id = ? AND concluido = 0', [desafioId], (err, results) => {
+            if (results[0].pendentes === 0) {
+                // 3. SE PENDENTES == 0, avança o dia e reseta os itens
+                db.query('UPDATE desafios SET dia_atual = dia_atual + 1 WHERE id = ?', [desafioId], () => {
+                    db.query('UPDATE itens_desafio SET concluido = 0 WHERE desafio_id = ?', [desafioId], () => {
+                        res.json({ message: "Dia concluído e avançado!", advanced: true });
+                    });
+                });
+            } else {
+                res.json({ message: "Status atualizado!", advanced: false });
+            }
+        });
     });
 });
 

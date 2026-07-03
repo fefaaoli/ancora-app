@@ -373,7 +373,7 @@ export default function App() {
     try {
       const response = await fetch(`https://ancora-app-1.onrender.com/api/challenges/${id}`, { 
         method: 'DELETE'
-      });   
+      });  
       if (response.ok) {
         await fetchAllData();
         triggerNotification("Desafio removido! 💜");
@@ -384,14 +384,18 @@ export default function App() {
     }
   };
 
-  const handleToggleChallengeItem = async (challengeId, itemId) => {
+  const progressPercent = Math.min(100, (calculatedMetrics.currentStreak / targetDays) * 100);
+
+    const handleToggleChallengeItem = async (challengeId, itemId) => {
     const targetChallenge = challenges.find(c => c.id === challengeId);
     if (!targetChallenge) return;
-    
-    // Atualiza o estado local do item
-    const newCompletedState = !targetChallenge.checklist.find(i => i.id === itemId).completed;
-    
-    let updatedChallenges = challenges.map(c => {
+    const targetItem = targetChallenge.checklist.find(i => i.id === itemId);
+    if (!targetItem) return;
+
+    const newCompletedState = !targetItem.completed;
+
+    // Atualização otimista (UI muda na hora)
+    setChallenges(challenges.map(c => {
       if (c.id === challengeId) {
         return {
           ...c,
@@ -399,37 +403,25 @@ export default function App() {
         };
       }
       return c;
-    });
-
-    // Lógica de avanço de dia
-    const challenge = updatedChallenges.find(c => c.id === challengeId);
-    const allCompleted = challenge.checklist.every(item => item.completed);
-    
-    if (allCompleted && challenge.currentDay < challenge.totalDays) {
-      // Avança o dia e reseta o checklist
-      updatedChallenges = updatedChallenges.map(c => {
-        if (c.id === challengeId) {
-          return {
-            ...c,
-            currentDay: c.currentDay + 1,
-            checklist: c.checklist.map(item => ({ ...item, completed: false }))
-          };
-        }
-        return c;
-      });
-      triggerNotification("Parabéns! Você avançou para o próximo dia! 💜");
-    }
-
-    setChallenges(updatedChallenges);
+    }));
 
     try {
-      await fetch(`https://ancora-app-1.onrender.com/api/items/${itemId}`, { 
+      const response = await fetch(`https://ancora-app-1.onrender.com/api/challenges/items/${itemId}`, { 
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ completed: newCompletedState })
+        body: JSON.stringify({ completed: newCompletedState, challengeId: challengeId }) // enviando o challengeId
       });
+      
+      const data = await response.json();
+      
+      // Se o backend avisar que avançou o dia, recarregamos tudo
+      if (data.advanced) {
+        triggerNotification("🎉 Tarefa finalizada! Dia concluído com sucesso!");
+        await fetchAllData(); 
+      }
     } catch (err) {
       console.warn("Erro ao sincronizar status do checklist.");
+      triggerNotification("Erro na sincronização com o servidor.");
     }
   };
 
@@ -883,7 +875,7 @@ export default function App() {
                     <circle cx="56" cy="56" r="48" stroke={theme === 'dark' ? '#2C2638' : '#F4EEFD'} strokeWidth="8" fill="transparent" />
                     <circle cx="56" cy="56" r="48" stroke="#9F86FF" strokeWidth="8" fill="transparent" 
                             strokeDasharray={2 * Math.PI * 48}
-                            strokeDashoffset={2 * Math.PI * 48 * (1 - (Math.min(100, (calculatedMetrics.currentStreak / targetDays) * 100)) / 100)}
+                            strokeDashoffset={2 * Math.PI * 48 * (1 - progressPercent / 100)}
                             strokeLinecap="round" />
                   </svg>
                   <div className="absolute text-center">
