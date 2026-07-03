@@ -410,7 +410,7 @@ export default function App() {
       const data = await response.json();
       // Se o backend avançou o dia, recarrega tudo
       if (data.advanced) {
-        alert("🎉 Tarefa finalizada! Dia concluído com sucesso!");
+        triggerNotification("🎉 Tarefa finalizada! Dia concluído com sucesso!");
         await fetchAllData(); 
       }
     } catch (err) {
