@@ -376,7 +376,7 @@ export default function App() {
       });  
       if (response.ok) {
         await fetchAllData();
-        triggerNotification("Desafio removido de forma persistente do MySQL! 💜");
+        triggerNotification("Desafio removido! 💜");
       }
     } catch (err) {
       setChallenges(challenges.filter(c => c.id !== id));
@@ -411,7 +411,7 @@ export default function App() {
         body: JSON.stringify({ completed: newCompletedState })
       });
     } catch (err) {
-      console.warn("Erro ao sincronizar status do checklist com o MySQL.");
+      console.warn("Erro ao sincronizar status do checklist.");
     }
   };
 
@@ -500,7 +500,7 @@ export default function App() {
         setShowAddEpisode(false);
         setManualStreakOverride(0);
         localStorage.setItem('ancora_manualStreakOverride', 0);
-        triggerNotification("Registro acolhido com sucesso no MySQL. Não há julgamentos aqui. 💜");
+        triggerNotification("Registro acolhido com sucesso. Não há julgamentos aqui. 💜");
         setFormEpisode({
           date: todayStr,
           time: "20:00",
@@ -544,7 +544,7 @@ export default function App() {
         await fetchAllData();
         setShowAddVictory(false);
         setFormVictory({ title: '', description: '', category: 'Gatilho' });
-        triggerNotification("Vitória registrada de forma segura no MySQL! 💜");
+        triggerNotification("Vitória registrada! 💜");
       }
     } catch (err) {
       setSmallVictories([{ id: Date.now(), ...newVic }, ...smallVictories]);
@@ -569,7 +569,7 @@ export default function App() {
         })
       });
       if (response.ok) {
-        triggerNotification("Seu plano de recuperação foi sincronizado no MySQL! 💜");
+        triggerNotification("Seu plano de recuperação foi salvo! 💜");
       }
     } catch (err) {
       triggerNotification("Plano salvo localmente (Modo Offline)!");
@@ -594,7 +594,7 @@ export default function App() {
       if (response.ok) {
         await fetchAllData();
         setFormDiary({ text: '', prompt: 'O que aconteceu hoje?' });
-        triggerNotification("Página de diário salva de forma segura no MySQL! 💜");
+        triggerNotification("Página de diário salva! 💜");
       }
     } catch (err) {
       setDiaryEntries([{ id: Date.now(), ...newEntry }, ...diaryEntries]);
@@ -669,7 +669,7 @@ export default function App() {
         await fetchAllData();
         setShowCreateChallenge(false);
         setNewChallenge({ title: '', duration: 15, description: '', items: ['Beber água', 'Fazer check-in'] });
-        triggerNotification("Seu desafio personalizado foi salvo no MySQL! 💜");
+        triggerNotification("Seu desafio personalizado foi salvo! 💜");
       }
     } catch (err) {
       const newC = {
@@ -735,8 +735,8 @@ export default function App() {
           ? 'bg-[#EDE7F6] text-[#9F86FF] border-b border-[#C8B6FF]/30'
           : 'bg-[#FFF3F8] text-[#9F86FF] border-b border-pink-100'
       }`}>
-        {dbStatus === 'connected' && "● Sincronizado ao MySQL local (Express) 💜"}
-        {dbStatus === 'connecting' && "Sincronizando com banco MySQL..."}
+        {dbStatus === 'connected' && "● Sincronizado ao banco 💜"}
+        {dbStatus === 'connecting' && "Sincronizando com banco..."}
         {dbStatus === 'offline' && "Utilizando Armazenamento em Estado Local (Modo Simulação)"}
       </div>
 
