@@ -149,85 +149,6 @@ app.post('/api/victories', (req, res) => {
     });
 });
 
-// ROTA GET PARA BUSCAR OS TREINOS (A rota que estava faltando)
-app.get('/api/workouts', (req, res) => {
-    db.query('SELECT * FROM workouts WHERE user_id = 1', (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(results);
-    });
-});
-
-app.post('/api/workouts', (req, res) => {
-    const { day_of_week, exercise } = req.body;
-    const sql = `
-        INSERT INTO workouts (user_id, day_of_week, exercise, completed_day)
-        VALUES (1, ?, ?, 0)
-        ON DUPLICATE KEY UPDATE exercise = VALUES(exercise)
-    `;
-    db.query(sql, [day_of_week, exercise], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: "Workout saved!" });
-    });
-});
-
-app.put('/api/workouts/status/:day_of_week', (req, res) => {
-    const { completed_day } = req.body;
-    db.query(
-        'UPDATE workouts SET completed_day = ? WHERE user_id = 1 AND day_of_week = ?',
-        [completed_day ? 1 : 0, req.params.day_of_week],
-        (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: "Status updated!" });
-        }
-    );
-});
-
-// ROTA GET PARA BUSCAR TODOS OS ITENS DE TREINO
-app.get('/api/workouts/items', (req, res) => {
-    db.query('SELECT * FROM workout_items WHERE user_id = 1', (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(results);
-    });
-});
-
-app.post('/api/workouts/items', (req, res) => {
-    const { day_of_week, text } = req.body;
-    db.query(
-        'INSERT INTO workout_items (user_id, day_of_week, text) VALUES (1, ?, ?)',
-        [day_of_week, text],
-        (err, result) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ error: err.message });
-            }
-            res.json({ id: result.insertId, text });
-        }
-    );
-});
-
-app.put('/api/workouts/items/:id', (req, res) => {
-    const { text } = req.body;
-    db.query(
-        'UPDATE workout_items SET text = ? WHERE id = ? AND user_id = 1',
-        [text, req.params.id],
-        (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: "Exercise updated!" });
-        }
-    );
-});
-
-app.delete('/api/workouts/items/:id', (req, res) => {
-    db.query(
-        'DELETE FROM workout_items WHERE id = ? AND user_id = 1',
-        [req.params.id],
-        (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: "Exercise removed!" });
-        }
-    );
-});
-
 app.get('/api/challenges', (req, res) => {
     db.query('SELECT * FROM desafios WHERE usuario_id = 1 ORDER BY id DESC', (err, challenges) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -323,6 +244,77 @@ app.put('/api/challenges/items/:itemId', (req, res) => {
                 }
             } else {
                 res.json({ message: "Status atualizado!", advanced: false });
+            }
+        });
+    });
+});
+
+// --- ROTAS DA ABA TREINO ---
+
+// Buscar descrições dos dias de treino
+app.get('/api/training/days', (req, res) => {
+    db.query('SELECT dia_semana, descricao FROM treino_dias WHERE usuario_id = 1', (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+// Atualizar descrição de um dia específico
+app.post('/api/training/days', (req, res) => {
+    const { dia_semana, descricao } = req.body;
+    const sql = `
+        INSERT INTO treino_dias (usuario_id, dia_semana, descricao) 
+        VALUES (1, ?, ?) 
+        ON DUPLICATE KEY UPDATE descricao = ?
+    `;
+    db.query(sql, [dia_semana, descricao, descricao], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Descrição atualizada!" });
+    });
+});
+
+// Buscar todos os exercícios
+app.get('/api/training/exercises', (req, res) => {
+    db.query('SELECT * FROM treino_exercicios WHERE usuario_id = 1 ORDER BY dia_semana, ordem ASC', (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+// Adicionar novo exercício
+app.post('/api/training/exercises', (req, res) => {
+    const { dia_semana, nome, ordem } = req.body;
+    db.query(
+        'INSERT INTO treino_exercicios (usuario_id, dia_semana, nome, ordem) VALUES (1, ?, ?, ?)',
+        [dia_semana, nome, ordem || 0],
+        (err, result) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: "Exercício adicionado!", id: result.insertId });
+        }
+    );
+});
+
+// Excluir exercício
+app.delete('/api/training/exercises/:id', (req, res) => {
+    db.query('DELETE FROM treino_exercicios WHERE id = ? AND usuario_id = 1', [req.params.id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Exercício excluído!" });
+    });
+});
+
+// Reordenar exercícios (Recebe um array com id e nova ordem)
+app.put('/api/training/exercises/reorder', (req, res) => {
+    const { items } = req.body; // Array de objetos { id, ordem }
+    
+    if (!items || !items.length) return res.json({ message: "Nenhum item para atualizar" });
+
+    let queriesCompleted = 0;
+    items.forEach((item) => {
+        db.query('UPDATE treino_exercicios SET ordem = ? WHERE id = ? AND usuario_id = 1', [item.ordem, item.id], (err) => {
+            if (err) console.error("Erro ao reordenar item:", err);
+            queriesCompleted++;
+            if (queriesCompleted === items.length) {
+                res.json({ message: "Ordem atualizada com sucesso!" });
             }
         });
     });

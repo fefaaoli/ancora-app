@@ -18,7 +18,10 @@ import {
   Coffee,
   Compass,
   Info,
-  Dumbbell
+  Dumbbell,
+  Save,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 
 const MOTIVATIONAL_QUOTES = [
@@ -35,15 +38,15 @@ export default function App() {
   const [showSos, setShowSos] = useState(false);
   const [userName, setUserName] = useState("Maria");
 
-  const [workouts, setWorkouts] = useState([
-      { id: 0, day: 'Segunda', exercise: '', completed: false, items: [{id: 101, text: ''}] },
-      { id: 1, day: 'Terça', exercise: '', completed: false, items: [{id: 102, text: ''}] },
-      { id: 2, day: 'Quarta', exercise: '', completed: false, items: [{id: 103, text: ''}] },
-      { id: 3, day: 'Quinta', exercise: '', completed: false, items: [{id: 104, text: ''}] },
-      { id: 4, day: 'Sexta', exercise: '', completed: false, items: [{id: 105, text: ''}] },
-      { id: 5, day: 'Sábado', exercise: '', completed: false, items: [{id: 106, text: ''}] },
-      { id: 6, day: 'Domingo', exercise: '', completed: false, items: [{id: 107, text: ''}] },
-    ]);
+  // Estados da aba Treino
+  const diasDaSemana = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
+  const [trainingDays, setTrainingDays] = useState({}); // { 'Segunda-feira': 'Glúteos e Posterior' }
+  const [exercises, setExercises] = useState({}); // { 'Segunda-feira': [{id, nome, ordem}] }
+  
+  const [editingDay, setEditingDay] = useState(null);
+  const [tempDayDesc, setTempDayDesc] = useState('');
+  
+  const [newExercise, setNewExercise] = useState({ day: null, name: '' });
   
   const [dbStatus, setDbStatus] = useState('connecting'); // connected, connecting, offline
   const [checkIns, setCheckIns] = useState([]);
@@ -178,6 +181,27 @@ export default function App() {
           description: v.descricao || v.description || '',
           category: v.categoria || v.category || 'Gatilho'
         })));
+      }
+
+      // 7. Buscar Dados de Treino
+      const resDays = await fetch('https://ancora-app-1.onrender.com/api/training/days', { signal: controller.signal });
+      if (resDays.ok) {
+        const data = await resDays.json();
+        const daysMap = {};
+        data.forEach(d => { daysMap[d.dia_semana] = d.descricao; });
+        setTrainingDays(daysMap);
+      }
+
+      const resExercises = await fetch('https://ancora-app-1.onrender.com/api/training/exercises', { signal: controller.signal });
+      if (resExercises.ok) {
+        const data = await resExercises.json();
+        const exMap = {};
+        diasDaSemana.forEach(d => exMap[d] = []);
+        data.forEach(ex => {
+            if (!exMap[ex.dia_semana]) exMap[ex.dia_semana] = [];
+            exMap[ex.dia_semana].push(ex);
+        });
+        setExercises(exMap);
       }
 
       clearTimeout(timeoutId);
@@ -392,99 +416,6 @@ export default function App() {
     } catch (err) {
       setChallenges(challenges.filter(c => c.id !== id));
       triggerNotification("Desafio removido localmente.");
-    }
-  };
-
-  // 1. Criar novo exercício: Salva no banco primeiro, usa o ID retornado
-  const addExerciseItem = async (dayId) => {
-    try {
-      const response = await fetch('https://ancora-app-1.onrender.com/api/workouts/items', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dia_semana: dayId, text: '' })
-      });
-      
-      const data = await response.json();
-      
-      // Atualiza o estado com o ID real que veio do banco
-      setWorkouts(prev => prev.map(day => 
-        day.id === dayId ? { ...day, items: [...day.items, { id: data.id, text: '' }] } : day
-      ));
-    } catch (err) {
-      console.error("Erro ao criar exercício:", err);
-      triggerNotification("Erro ao criar exercício no servidor.");
-    }
-  };
-
-  // 2. Atualizar texto do exercício: Mantive o otimista, mas com tratamento de erro
-  const updateExerciseItem = async (dayId, itemId, newText) => {
-    // Atualiza localmente
-    setWorkouts(prev => prev.map(day => day.id === dayId ? {
-      ...day, 
-      items: day.items.map(i => i.id === itemId ? {...i, text: newText} : i)
-    } : day));
-    
-    try {
-      await fetch(`https://ancora-app-1.onrender.com/api/workouts/items/${itemId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: newText })
-      });
-    } catch (err) { 
-      console.error("Erro ao salvar exercício:", err); 
-    }
-  };
-
-  // 3. Atualizar Título do dia
-  const updateWorkoutDay = async (id, newExerciseTitle) => {
-    setWorkouts(prev => prev.map(w => w.id === id ? {...w, exercise: newExerciseTitle} : w));
-    
-    try {
-      await fetch(`https://ancora-app-1.onrender.com/api/workouts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dia_semana: id, exercicio: newExerciseTitle })
-      });
-    } catch (err) { 
-      console.error("Erro ao salvar nome do treino:", err); 
-    }
-  };
-
-  // 4. Excluir exercício: Corrigido o endpoint para apontar para a rota de itens
-  const handleDeleteExercise = async (itemId) => {
-    try {
-      // Corrigido: o endpoint deve ser o de items
-      await fetch(`https://ancora-app-1.onrender.com/api/workouts/items/${itemId}`, { 
-        method: 'DELETE' 
-      });
-      
-      // Atualiza localmente o estado para não precisar recarregar tudo do banco
-      setWorkouts(prev => prev.map(day => ({
-        ...day,
-        items: day.items.filter(item => item.id !== itemId)
-      })));
-      
-      triggerNotification("Exercício removido!");
-    } catch (err) { 
-      console.error(err); 
-      triggerNotification("Erro ao remover exercício.");
-    }
-  };
-
-  // 5. Toggle de conclusão
-  const toggleDayComplete = async (dia_semana, currentStatus) => {
-    try {
-      await fetch(`https://ancora-app-1.onrender.com/api/workouts/status/${dia_semana}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ concluido_dia: !currentStatus })
-      });
-      
-      // Atualização otimista
-      setWorkouts(prev => prev.map(w => w.id === dia_semana ? {...w, completed: !currentStatus} : w));
-    } catch (err) {
-      console.error(err);
-      triggerNotification("Erro ao atualizar status.");
     }
   };
 
@@ -830,6 +761,93 @@ export default function App() {
     
     if (check.urge >= 6) return 'bg-[#FFD6E8] text-[#9F86FF] font-medium border border-pink-300'; 
     return 'bg-[#EDE7F6] text-[#9F86FF] font-medium'; 
+  };
+
+  const handleSaveDayDesc = async (day) => {
+    try {
+      await fetch('https://ancora-app-1.onrender.com/api/training/days', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dia_semana: day, descricao: tempDayDesc })
+      });
+      setTrainingDays({ ...trainingDays, [day]: tempDayDesc });
+      setEditingDay(null);
+      triggerNotification("Descrição atualizada! 🏋️‍♀️");
+    } catch (err) {
+      setTrainingDays({ ...trainingDays, [day]: tempDayDesc });
+      setEditingDay(null);
+      triggerNotification("Descrição atualizada localmente!");
+    }
+  };
+
+  const handleAddExercise = async (day) => {
+    if (!newExercise.name.trim()) return;
+    
+    const currentList = exercises[day] || [];
+    const newOrder = currentList.length > 0 ? Math.max(...currentList.map(e => e.ordem)) + 1 : 0;
+    const payload = { dia_semana: day, nome: newExercise.name, ordem: newOrder };
+
+    try {
+      const res = await fetch('https://ancora-app-1.onrender.com/api/training/exercises', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      
+      setExercises({
+        ...exercises,
+        [day]: [...currentList, { id: data.id, ...payload }]
+      });
+      setNewExercise({ day: null, name: '' });
+    } catch (err) {
+      setExercises({
+        ...exercises,
+        [day]: [...currentList, { id: Date.now(), ...payload }]
+      });
+      setNewExercise({ day: null, name: '' });
+    }
+  };
+
+  const handleDeleteExercise = async (day, id) => {
+    try {
+      await fetch(`https://ancora-app-1.onrender.com/api/training/exercises/${id}`, { method: 'DELETE' });
+      setExercises({
+        ...exercises,
+        [day]: exercises[day].filter(e => e.id !== id)
+      });
+    } catch (err) {
+      setExercises({
+        ...exercises,
+        [day]: exercises[day].filter(e => e.id !== id)
+      });
+    }
+  };
+
+  const handleMoveExercise = async (day, index, direction) => {
+    const list = [...(exercises[day] || [])];
+    if (direction === 'up' && index > 0) {
+      [list[index - 1], list[index]] = [list[index], list[index - 1]];
+    } else if (direction === 'down' && index < list.length - 1) {
+      [list[index], list[index + 1]] = [list[index + 1], list[index]];
+    } else {
+      return; // Movimento inválido
+    }
+
+    // Atualiza a propriedade 'ordem' com base na nova posição do array
+    const updatedList = list.map((ex, idx) => ({ ...ex, ordem: idx }));
+    
+    setExercises({ ...exercises, [day]: updatedList });
+
+    try {
+      await fetch('https://ancora-app-1.onrender.com/api/training/exercises/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: updatedList.map(e => ({ id: e.id, ordem: e.ordem })) })
+      });
+    } catch (err) {
+      console.warn("Reordenação guardada localmente.");
+    }
   };
 
   return (
@@ -1680,72 +1698,131 @@ export default function App() {
           </div>
         )}
 
-{activeTab === 'treino' && (
-  <div className="space-y-6 animate-fadeIn">
-    <h1 className="text-2xl font-bold">Divisão de Treino</h1>
-    {workouts.map((w) => (
-      <div 
-        key={w.id} 
-        className={`p-5 rounded-[24px] border shadow-sm ${theme === 'dark' ? 'bg-[#211D2F] border-[#2C2638]' : 'bg-white border-[#EDE7F6]'}`}
-      >
-        {/* Título do dia */}
-        <div className="flex items-center gap-3 mb-4">
-          <button 
-            onClick={() => toggleDayComplete(w.id, w.completed)}
-            className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${w.completed ? 'bg-[#9F86FF] border-[#9F86FF]' : 'border-gray-300'}`}
-          >
-            {w.completed && <Check className="w-4 h-4 text-white" />}
-          </button>
-          <input 
-            className="font-bold text-lg bg-transparent outline-none flex-1"
-            placeholder={`${w.day}: Treino de...`}
-            value={w.exercise || ''}
-            onChange={(e) => {
-              const val = e.target.value;
-              setWorkouts(prev => prev.map(item => item.id === w.id ? {...item, exercise: val} : item));
-            }}
-            onBlur={(e) => updateWorkoutDay(w.id, e.target.value)}
-          />
-        </div>
-
-        {/* Lista de Exercícios */}
-        <div className="space-y-2">
-          {w.items.map((item) => (
-            <div key={item.id} className="flex items-center gap-2 pl-10 group">
-              <div className="w-2 h-2 rounded-full bg-[#C8B6FF]"></div>
-              <input 
-                className="w-full text-sm bg-transparent outline-none"
-                placeholder="Novo exercício..."
-                value={item.text || ''}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setWorkouts(prev => prev.map(day => day.id === w.id ? {
-                    ...day, 
-                    items: day.items.map(i => i.id === item.id ? {...i, text: val} : i)
-                  } : day));
-                }}
-                onBlur={(e) => updateExerciseItem(w.id, item.id, e.target.value)}
-              />
-              <button 
-                onClick={() => handleDeleteExercise(item.id)} 
-                className="opacity-0 group-hover:opacity-100 text-red-400 p-1 hover:bg-red-50 rounded"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+        {/* TAB 4: TREINO */}
+        {activeTab === 'treino' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Organização de Treinos</h1>
+              <p className="text-xs text-gray-500 mt-1">Configure sua rotina semanal de forma independente.</p>
             </div>
-          ))}
-          
-          <button 
-            onClick={() => addExerciseItem(w.id)}
-            className="text-[10px] text-[#9F86FF] font-bold flex items-center mt-2 gap-1 px-10"
-          >
-            <Plus className="w-3 h-3" /> Adicionar Exercício
-          </button>
-        </div>
-      </div>
-    ))}
-  </div>
-)}
+
+            <div className="space-y-5">
+              {diasDaSemana.map((day) => {
+                const dayExercises = exercises[day] || [];
+                const currentDesc = trainingDays[day] || '';
+
+                return (
+                  <div key={day} className={`p-4 rounded-[20px] border shadow-sm transition-all ${theme === 'dark' ? 'bg-[#211D2F] border-[#2C2638]' : 'bg-white border-[#EDE7F6]'}`}>
+                    
+                    {/* Cabeçalho do Dia */}
+                    <div className="flex flex-col mb-4 border-b border-[#EDE7F6] dark:border-[#2C2638] pb-3">
+                      <h3 className="font-bold text-sm text-[#9F86FF] uppercase tracking-wider mb-1">{day}</h3>
+                      
+                      {editingDay === day ? (
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            placeholder="Ex: Glúteos e Posterior..."
+                            value={tempDayDesc}
+                            onChange={(e) => setTempDayDesc(e.target.value)}
+                            className={`flex-1 p-1.5 rounded-md text-xs border ${theme === 'dark' ? 'bg-[#181622] border-[#2C2638] text-white' : 'bg-[#F8F8FA] border-gray-200'}`}
+                            autoFocus
+                          />
+                          <button onClick={() => handleSaveDayDesc(day)} className="text-emerald-500 hover:text-emerald-600 p-1">
+                            <Save className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setEditingDay(null)} className="text-gray-400 p-1">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between group">
+                          <span className={`text-xs font-semibold ${currentDesc ? (theme === 'dark' ? 'text-gray-200' : 'text-gray-700') : 'text-gray-400 italic'}`}>
+                            {currentDesc || 'Sem foco definido'}
+                          </span>
+                          <button 
+                            onClick={() => {
+                              setEditingDay(day);
+                              setTempDayDesc(currentDesc);
+                            }} 
+                            className="text-gray-400 hover:text-[#9F86FF] transition-colors p-1"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Lista de Exercícios */}
+                    <div className="space-y-2 mb-3">
+                      {dayExercises.length === 0 ? (
+                        <p className="text-[11px] text-gray-400 text-center py-2">Nenhum exercício adicionado.</p>
+                      ) : (
+                        dayExercises.map((ex, index) => (
+                          <div key={ex.id} className={`flex items-center justify-between p-2.5 rounded-xl border ${theme === 'dark' ? 'bg-[#181622] border-[#2C2638]' : 'bg-gray-50 border-gray-200'}`}>
+                            <span className="text-xs font-medium pl-1">{ex.nome}</span>
+                            <div className="flex items-center space-x-1">
+                              {/* Setas de Reordenação */}
+                              <div className="flex flex-col mr-1">
+                                <button 
+                                  disabled={index === 0} 
+                                  onClick={() => handleMoveExercise(day, index, 'up')}
+                                  className="text-gray-400 hover:text-[#9F86FF] disabled:opacity-30"
+                                >
+                                  <ArrowUp className="w-3 h-3" />
+                                </button>
+                                <button 
+                                  disabled={index === dayExercises.length - 1} 
+                                  onClick={() => handleMoveExercise(day, index, 'down')}
+                                  className="text-gray-400 hover:text-[#9F86FF] disabled:opacity-30"
+                                >
+                                  <ArrowDown className="w-3 h-3" />
+                                </button>
+                              </div>
+                              {/* Excluir */}
+                              <button onClick={() => handleDeleteExercise(day, ex.id)} className="p-1.5 text-gray-400 hover:text-red-400 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Adicionar Novo Exercício */}
+                    {newExercise.day === day ? (
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          placeholder="Nome do exercício..."
+                          value={newExercise.name}
+                          onChange={(e) => setNewExercise({ ...newExercise, name: e.target.value })}
+                          className={`flex-1 p-2 rounded-[10px] text-xs border ${theme === 'dark' ? 'bg-[#181622] border-[#2C2638] text-white' : 'bg-white border-[#C8B6FF]'}`}
+                          autoFocus
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddExercise(day)}
+                        />
+                        <button onClick={() => handleAddExercise(day)} className="bg-[#9F86FF] text-white p-2 rounded-[10px]">
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setNewExercise({ day: null, name: '' })} className="bg-gray-200 text-gray-500 dark:bg-[#2C2638] p-2 rounded-[10px]">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => setNewExercise({ day: day, name: '' })}
+                        className="w-full py-2 flex items-center justify-center space-x-1 text-[11px] font-bold text-[#9F86FF] bg-[#EDE7F6] hover:bg-[#C8B6FF] hover:text-white dark:bg-[#2C2638] transition-colors rounded-xl"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Adicionar Exercício</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* TAB 5: APOIO */}
         {activeTab === 'apoio' && (
