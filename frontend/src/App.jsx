@@ -1811,7 +1811,7 @@ export default function App() {
                     ) : (
                       <button 
                         onClick={() => setNewExercise({ day: day, name: '' })}
-                        className="w-full py-2 flex items-center justify-center space-x-1 text-[11px] font-bold text-[#9F86FF] bg-[#EDE7F6] hover:bg-[#C8B6FF] hover:text-white dark:bg-[#2C2638] transition-colors rounded-xl"
+                        className="w-full py-2 flex items-center justify-center space-x-1 text-[11px] font-bold text-[#9F86FF] bg-[#EDE7F6] hover:bg-[#C8B6FF] hover:text-white"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>Adicionar Exercício</span>
