@@ -35,15 +35,15 @@ export default function App() {
   const [showSos, setShowSos] = useState(false);
   const [userName, setUserName] = useState("Maria");
 
-const [workouts, setWorkouts] = useState([
-    { id: 0, day: 'Domingo', exercise: '', completed: false },
-    { id: 1, day: 'Segunda', exercise: '', completed: false },
-    { id: 2, day: 'Terça', exercise: '', completed: false },
-    { id: 3, day: 'Quarta', exercise: '', completed: false },
-    { id: 4, day: 'Quinta', exercise: '', completed: false },
-    { id: 5, day: 'Sexta', exercise: '', completed: false },
-    { id: 6, day: 'Sábado', exercise: '', completed: false },
-  ]);
+  const [workouts, setWorkouts] = useState([
+      { id: 0, day: 'Segunda', items: [{ id: 1, text: '', completed: false }] },
+      { id: 1, day: 'Terça', items: [{ id: 2, text: '', completed: false }] },
+      { id: 2, day: 'Quarta', items: [{ id: 3, text: '', completed: false }] },
+      { id: 3, day: 'Quinta', items: [{ id: 4, text: '', completed: false }] },
+      { id: 4, day: 'Sexta', items: [{ id: 5, text: '', completed: false }] },
+      { id: 5, day: 'Sábado', items: [{ id: 6, text: '', completed: false }] },
+      { id: 6, day: 'Domingo', items: [{ id: 7, text: '', completed: false }] },
+    ]);
   
   const [dbStatus, setDbStatus] = useState('connecting'); // connected, connecting, offline
   const [checkIns, setCheckIns] = useState([]);
@@ -167,7 +167,7 @@ const [workouts, setWorkouts] = useState([
         })));
       }
 
-// 6. Buscar Pequenas Vitórias
+      // 6. Buscar Pequenas Vitórias
       const resVic = await fetch('https://ancora-app-1.onrender.com/api/victories', { signal: controller.signal }); 
       if (resVic.ok) {
         const data = await resVic.json();
@@ -1597,42 +1597,58 @@ const [workouts, setWorkouts] = useState([
           </div>
         )}
 
-{/* TAB NOVA: TREINO */}
-{activeTab === 'treino' && (
-  <div className="space-y-6 animate-fadeIn">
-    <div>
-      <h1 className="text-2xl font-bold tracking-tight">Divisão de Treino</h1>
-      <p className="text-xs text-gray-500 mt-1">Organize sua rotina de exercícios semanal.</p>
-    </div>
+        {activeTab === 'treino' && (
+          <div className="space-y-6 animate-fadeIn p-4 max-w-md mx-auto">
+            <h1 className="text-2xl font-bold tracking-tight">Divisão de Treino</h1>
+            
+            {workouts.map((w) => (
+              <div key={w.id} className={`p-5 rounded-[24px] border shadow-sm ${theme === 'dark' ? 'bg-[#211D2F] border-[#2C2638]' : 'bg-white border-[#EDE7F6]'}`}>
+                {/* Título do dia com check */}
+                <div className="flex items-center gap-3 mb-4">
+                  <button 
+                    onClick={() => setWorkouts(workouts.map(day => day.id === w.id ? {...day, completed: !day.completed} : day))}
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${w.completed ? 'bg-[#9F86FF] border-[#9F86FF]' : 'border-gray-300'}`}
+                  >
+                    {w.completed && <Check className="w-4 h-4 text-white" />}
+                  </button>
+                  <input 
+                    className="font-bold text-lg bg-transparent outline-none flex-1"
+                    placeholder={`${w.day}: Nome do treino`}
+                    value={w.exercise}
+                    onChange={(e) => setWorkouts(workouts.map(item => item.id === w.id ? {...item, exercise: e.target.value} : item))}
+                  />
+                </div>
 
-    <div className="space-y-3">
-      {workouts.map((w) => (
-        <div key={w.id} className={`p-4 rounded-[20px] border shadow-sm flex items-center gap-4 ${
-          theme === 'dark' ? 'bg-[#211D2F] border-[#2C2638]' : 'bg-white border-[#EDE7F6]'
-        }`}>
-          <button 
-            onClick={() => handleUpdateWorkout(w.id, w.exercise, !w.completed)}
-            className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
-              w.completed ? 'bg-[#9F86FF] border-[#9F86FF] text-white' : 'border-gray-300'
-            }`}
-          >
-            {w.completed && <Check className="w-4 h-4" />}
-          </button>
-          <div className="flex-1">
-            <span className="block text-[10px] font-bold text-[#9F86FF] uppercase tracking-widest">{w.day}</span>
-            <input 
-              className="w-full bg-transparent text-sm outline-none mt-1"
-              placeholder="Ex: Treino de pernas..."
-              value={w.exercise}
-              onBlur={(e) => handleUpdateWorkout(w.id, e.target.value, w.completed)}
-              onChange={(e) => setWorkouts(workouts.map(item => item.id === w.id ? {...item, exercise: e.target.value} : item))}
-            />
+                {/* Lista de Exercícios interna */}
+                <div className="space-y-2">
+                  {w.items?.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2 pl-9">
+                      <input 
+                        className="w-full text-sm bg-transparent outline-none border-b border-gray-100"
+                        value={item.text}
+                        onChange={(e) => {
+                          setWorkouts(workouts.map(day => day.id === w.id ? {
+                            ...day, items: day.items.map(i => i.id === item.id ? {...i, text: e.target.value} : i)
+                          } : day));
+                        }}
+                      />
+                    </div>
+                  ))}
+                  <button 
+                    onClick={() => {
+                      setWorkouts(workouts.map(day => day.id === w.id ? {
+                        ...day, items: [...(day.items || []), { id: Date.now(), text: '' }]
+                      } : day));
+                    }}
+                    className="text-[10px] text-[#9F86FF] font-bold flex items-center gap-1 mt-2"
+                  >
+                    <Plus className="w-3 h-3" /> Adicionar Exercício
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+        )}
 
         {/* TAB 5: APOIO */}
         {activeTab === 'apoio' && (
