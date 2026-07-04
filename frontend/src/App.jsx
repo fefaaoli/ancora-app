@@ -2020,7 +2020,7 @@ export default function App() {
             </div>
 
             {/* SEÇÃO 2: LISTA DE COMPRAS ESTILO GOOGLE KEEP */}
-            <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-[#2C2638]">
+            <div className={`space-y-4 pt-4 border-t ${theme === 'dark' ? 'border-[#2C2638]' : 'border-gray-200'}`}>
               <div className="flex items-center space-x-2 mb-2">
                 <ShoppingCart className="w-4 h-4 text-[#9F86FF]" />
                 <h2 className="text-xs font-bold uppercase tracking-widest text-[#9F86FF]">Lista de Compras</h2>
