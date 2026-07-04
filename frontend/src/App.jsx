@@ -36,13 +36,13 @@ export default function App() {
   const [userName, setUserName] = useState("Maria");
 
   const [workouts, setWorkouts] = useState([
-      { id: 0, day: 'Segunda', items: [{ id: 1, text: '', completed: false }] },
-      { id: 1, day: 'Terça', items: [{ id: 2, text: '', completed: false }] },
-      { id: 2, day: 'Quarta', items: [{ id: 3, text: '', completed: false }] },
-      { id: 3, day: 'Quinta', items: [{ id: 4, text: '', completed: false }] },
-      { id: 4, day: 'Sexta', items: [{ id: 5, text: '', completed: false }] },
-      { id: 5, day: 'Sábado', items: [{ id: 6, text: '', completed: false }] },
-      { id: 6, day: 'Domingo', items: [{ id: 7, text: '', completed: false }] },
+      { id: 0, day: 'Segunda', exercise: '', completed: false, items: [{id: 101, text: ''}] },
+      { id: 1, day: 'Terça', exercise: '', completed: false, items: [{id: 102, text: ''}] },
+      { id: 2, day: 'Quarta', exercise: '', completed: false, items: [{id: 103, text: ''}] },
+      { id: 3, day: 'Quinta', exercise: '', completed: false, items: [{id: 104, text: ''}] },
+      { id: 4, day: 'Sexta', exercise: '', completed: false, items: [{id: 105, text: ''}] },
+      { id: 5, day: 'Sábado', exercise: '', completed: false, items: [{id: 106, text: ''}] },
+      { id: 6, day: 'Domingo', exercise: '', completed: false, items: [{id: 107, text: ''}] },
     ]);
   
   const [dbStatus, setDbStatus] = useState('connecting'); // connected, connecting, offline
@@ -403,6 +403,23 @@ export default function App() {
       setChallenges(challenges.filter(c => c.id !== id));
       triggerNotification("Desafio removido localmente.");
     }
+  };
+
+  const handleDeleteExercise = async (id) => {
+  try {
+    await fetch(`https://ancora-app-1.onrender.com/api/workouts/${id}`, { method: 'DELETE' });
+    fetchAllData(); // Recarrega a lista
+    triggerNotification("Exercício removido!");
+  } catch (err) { console.error(err); }
+};
+
+  const toggleDayComplete = async (dia_semana, currentStatus) => {
+    await fetch(`https://ancora-app-1.onrender.com/api/workouts/status/${dia_semana}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ concluido_dia: !currentStatus })
+    });
+    fetchAllData();
   };
 
   const progressPercent = Math.min(100, (calculatedMetrics.currentStreak / targetDays) * 100);
@@ -1598,51 +1615,46 @@ export default function App() {
         )}
 
         {activeTab === 'treino' && (
-          <div className="space-y-6 animate-fadeIn p-4 max-w-md mx-auto">
-            <h1 className="text-2xl font-bold tracking-tight">Divisão de Treino</h1>
-            
+          <div className="space-y-6 animate-fadeIn">
+            <h1 className="text-2xl font-bold">Divisão de Treino</h1>
             {workouts.map((w) => (
               <div key={w.id} className={`p-5 rounded-[24px] border shadow-sm ${theme === 'dark' ? 'bg-[#211D2F] border-[#2C2638]' : 'bg-white border-[#EDE7F6]'}`}>
-                {/* Título do dia com check */}
+                {/* Título do dia + Check */}
                 <div className="flex items-center gap-3 mb-4">
                   <button 
-                    onClick={() => setWorkouts(workouts.map(day => day.id === w.id ? {...day, completed: !day.completed} : day))}
-                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${w.completed ? 'bg-[#9F86FF] border-[#9F86FF]' : 'border-gray-300'}`}
+                    onClick={() => toggleDayComplete(w.id)}
+                    className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${w.completed ? 'bg-[#9F86FF] border-[#9F86FF]' : 'border-gray-300'}`}
                   >
                     {w.completed && <Check className="w-4 h-4 text-white" />}
                   </button>
                   <input 
                     className="font-bold text-lg bg-transparent outline-none flex-1"
-                    placeholder={`${w.day}: Nome do treino`}
+                    placeholder={`${w.day}: Treino de...`}
                     value={w.exercise}
                     onChange={(e) => setWorkouts(workouts.map(item => item.id === w.id ? {...item, exercise: e.target.value} : item))}
                   />
                 </div>
 
-                {/* Lista de Exercícios interna */}
+                {/* Lista de Exercícios */}
                 <div className="space-y-2">
-                  {w.items?.map((item) => (
-                    <div key={item.id} className="flex items-center gap-2 pl-9">
+                  {w.items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2 pl-10 group">
+                      <div className="w-2 h-2 rounded-full bg-[#C8B6FF]"></div>
                       <input 
-                        className="w-full text-sm bg-transparent outline-none border-b border-gray-100"
+                        className="w-full text-sm bg-transparent outline-none"
                         value={item.text}
-                        onChange={(e) => {
-                          setWorkouts(workouts.map(day => day.id === w.id ? {
-                            ...day, items: day.items.map(i => i.id === item.id ? {...i, text: e.target.value} : i)
-                          } : day));
-                        }}
+                        onChange={(e) => { /* lógica de update */ }}
                       />
+                      <button onClick={() => handleDeleteExercise(item.id)} className="opacity-0 group-hover:opacity-100 text-red-400">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   ))}
                   <button 
-                    onClick={() => {
-                      setWorkouts(workouts.map(day => day.id === w.id ? {
-                        ...day, items: [...(day.items || []), { id: Date.now(), text: '' }]
-                      } : day));
-                    }}
-                    className="text-[10px] text-[#9F86FF] font-bold flex items-center gap-1 mt-2"
+                    onClick={() => setWorkouts(workouts.map(day => day.id === w.id ? {...day, items: [...day.items, {id: Date.now(), text: ''}]} : day))}
+                    className="text-[10px] text-[#9F86FF] font-bold flex items-left"
                   >
-                    <Plus className="w-3 h-3" /> Adicionar Exercício
+                    <Plus className="w-3 h-3" />
                   </button>
                 </div>
               </div>

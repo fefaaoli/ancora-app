@@ -168,6 +168,24 @@ app.post('/api/workouts', (req, res) => {
         });
     });
 
+// Deletar um exercício específico pelo ID
+app.delete('/api/workouts/:id', (req, res) => {
+    db.query('DELETE FROM treinos WHERE id = ?', [req.params.id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Exercício removido!" });
+    });
+});
+
+// Atualizar apenas o status de conclusão do dia
+app.put('/api/workouts/status/:dia_semana', (req, res) => {
+    const { concluido_dia } = req.body;
+    db.query('UPDATE treinos SET concluido_dia = ? WHERE dia_semana = ?', 
+    [concluido_dia ? 1 : 0, req.params.dia_semana], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Status do dia atualizado!" });
+    });
+});
+
 app.get('/api/challenges', (req, res) => {
     db.query('SELECT * FROM desafios WHERE usuario_id = 1 ORDER BY id DESC', (err, challenges) => {
         if (err) return res.status(500).json({ error: err.message });
