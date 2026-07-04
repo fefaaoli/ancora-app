@@ -1527,7 +1527,7 @@ export default function App() {
                   <div className="flex flex-wrap gap-1">
                     {[
                       { title: "Volta à Rotina", duration: 7, desc: "Focar em retomar refeições em horários regulares.", items: ["Almoçar no horário", "Não pular lanches", "Beber 2L de água"] },
-                      { title: "Autocuidado", duration: 15, desc: "Pequenos atos de carinho com você mesma diariamente.", items: ["10m de respiração", "Elogiar meu esforço", "Dormir cedo"] },
+                      { title: "Autocuidado", duration: 15, desc: "Pequenos atos de carinho com você mesma diariamente.", items: ["beber 1.5 litros de água", "fazer 20 minutos de exercício físico", "Deitar até 23h30"] },
                       { title: "Menos Culpa", duration: 21, desc: "Acolhimento após deslizes, sem castigos alimentares.", items: ["Escrever no diário", "Caminhar ao ar livre", "Comer devagar"] }
                     ].map((tpl) => (
                       <button
@@ -1703,7 +1703,7 @@ export default function App() {
           <div className="space-y-6 animate-fadeIn">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Organização de Treinos</h1>
-              <p className="text-xs text-gray-500 mt-1">Configure sua rotina semanal de forma independente.</p>
+              <p className="text-xs text-gray-500 mt-1">Configure sua rotina semanal.</p>
             </div>
 
             <div className="space-y-5">
