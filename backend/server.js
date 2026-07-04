@@ -320,5 +320,78 @@ app.put('/api/training/exercises/reorder', (req, res) => {
     });
 });
 
+// --- ROTAS DA ABA ALIMENTAÇÃO (REFEIÇÕES) ---
+app.get('/api/meals', (req, res) => {
+    db.query('SELECT * FROM refeicoes WHERE usuario_id = 1', (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+app.post('/api/meals', (req, res) => {
+    const { tipo_refeicao, nome, quantidade } = req.body;
+    db.query(
+        'INSERT INTO refeicoes (usuario_id, tipo_refeicao, nome, quantidade) VALUES (1, ?, ?, ?)',
+        [tipo_refeicao, nome, quantidade || ''],
+        (err, result) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: "Alimento adicionado!", id: result.insertId });
+        }
+    );
+});
+
+app.put('/api/meals/:id', (req, res) => {
+    const { nome, quantidade } = req.body;
+    db.query('UPDATE refeicoes SET nome = ?, quantidade = ? WHERE id = ? AND usuario_id = 1', [nome, quantidade, req.params.id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Alimento editado!" });
+    });
+});
+
+app.delete('/api/meals/:id', (req, res) => {
+    db.query('DELETE FROM refeicoes WHERE id = ? AND usuario_id = 1', [req.params.id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Alimento removido!" });
+    });
+});
+
+// --- ROTAS DA ABA ALIMENTAÇÃO (LISTA DE COMPRAS) ---
+app.get('/api/shopping', (req, res) => {
+    db.query('SELECT * FROM lista_compras WHERE usuario_id = 1 ORDER BY id DESC', (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+app.post('/api/shopping', (req, res) => {
+    const { nome } = req.body;
+    db.query('INSERT INTO lista_compras (usuario_id, nome, concluido) VALUES (1, ?, 0)', [nome], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Item adicionado!", id: result.insertId });
+    });
+});
+
+app.put('/api/shopping/:id', (req, res) => {
+    const { concluido, nome } = req.body;
+    if (nome !== undefined) {
+        db.query('UPDATE lista_compras SET nome = ? WHERE id = ? AND usuario_id = 1', [nome, req.params.id], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: "Item editado!" });
+        });
+    } else {
+        db.query('UPDATE lista_compras SET concluido = ? WHERE id = ? AND usuario_id = 1', [concluido ? 1 : 0, req.params.id], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: "Status alterado!" });
+        });
+    }
+});
+
+app.delete('/api/shopping/:id', (req, res) => {
+    db.query('DELETE FROM lista_compras WHERE id = ? AND usuario_id = 1', [req.params.id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Item excluído!" });
+    });
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Servidor rodando e expandido na porta ${PORT}`));

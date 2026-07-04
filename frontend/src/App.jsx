@@ -47,6 +47,15 @@ export default function App() {
   const [tempDayDesc, setTempDayDesc] = useState('');
   
   const [newExercise, setNewExercise] = useState({ day: null, name: '' });
+
+  // Estados da aba Alimentação
+  const mealTypes = ['Café da manhã', 'Almoço', 'Café da tarde', 'Janta', 'Ceia'];
+  const [meals, setMeals] = useState({}); // { 'Café da manhã': [{id, nome, quantidade}] }
+  const [newMealItem, setNewMealItem] = useState({ type: null, name: '', amount: '' });
+  const [editingMeal, setEditingMeal] = useState(null); // { id, name, amount, type }
+
+  const [shoppingList, setShoppingList] = useState([]); // [{id, nome, concluido}]
+  const [newShoppingItem, setNewShoppingItem] = useState('');
   
   const [dbStatus, setDbStatus] = useState('connecting'); // connected, connecting, offline
   const [checkIns, setCheckIns] = useState([]);
@@ -202,6 +211,24 @@ export default function App() {
             exMap[ex.dia_semana].push(ex);
         });
         setExercises(exMap);
+      }
+
+      // 8. Buscar Alimentação e Compras
+      const resMeals = await fetch('https://ancora-app-1.onrender.com/api/meals', { signal: controller.signal });
+      if (resMeals.ok) {
+        const data = await resMeals.json();
+        const mMap = {};
+        mealTypes.forEach(t => mMap[t] = []);
+        data.forEach(m => {
+            if (!mMap[m.tipo_refeicao]) mMap[m.tipo_refeicao] = [];
+            mMap[m.tipo_refeicao].push(m);
+        });
+        setMeals(mMap);
+      }
+
+      const resShopping = await fetch('https://ancora-app-1.onrender.com/api/shopping', { signal: controller.signal });
+      if (resShopping.ok) {
+        setShoppingList(await resShopping.json());
       }
 
       clearTimeout(timeoutId);
@@ -848,6 +875,79 @@ export default function App() {
     } catch (err) {
       console.warn("Reordenação guardada localmente.");
     }
+  };
+
+  // --- HANDLERS: REFEIÇÕES ---
+  const handleAddMeal = async (type) => {
+    if (!newMealItem.name.trim()) return;
+    const payload = { tipo_refeicao: type, nome: newMealItem.name, quantidade: newMealItem.amount };
+    try {
+      const res = await fetch('https://ancora-app-1.onrender.com/api/meals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      setMeals({ ...meals, [type]: [...(meals[type] || []), { id: data.id, ...payload }] });
+      setNewMealItem({ type: null, name: '', amount: '' });
+    } catch (err) {
+      setMeals({ ...meals, [type]: [...(meals[type] || []), { id: Date.now(), ...payload }] });
+      setNewMealItem({ type: null, name: '', amount: '' });
+    }
+  };
+
+  const handleEditMeal = async (type, id) => {
+    try {
+      await fetch(`https://ancora-app-1.onrender.com/api/meals/${id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: editingMeal.name, quantidade: editingMeal.amount })
+      });
+      setMeals({
+        ...meals, [type]: meals[type].map(m => m.id === id ? { ...m, nome: editingMeal.name, quantidade: editingMeal.amount } : m)
+      });
+      setEditingMeal(null);
+    } catch (err) {}
+  };
+
+  const handleDeleteMeal = async (type, id) => {
+    try {
+      await fetch(`https://ancora-app-1.onrender.com/api/meals/${id}`, { method: 'DELETE' });
+      setMeals({ ...meals, [type]: meals[type].filter(m => m.id !== id) });
+    } catch (err) {
+      setMeals({ ...meals, [type]: meals[type].filter(m => m.id !== id) });
+    }
+  };
+
+  // --- HANDLERS: COMPRAS ---
+  const handleAddShoppingItem = async (e) => {
+    e.preventDefault();
+    if (!newShoppingItem.trim()) return;
+    const payload = { nome: newShoppingItem };
+    try {
+      const res = await fetch('https://ancora-app-1.onrender.com/api/shopping', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      setShoppingList([{ id: data.id, nome: payload.nome, concluido: 0 }, ...shoppingList]);
+      setNewShoppingItem('');
+    } catch (err) {
+      setShoppingList([{ id: Date.now(), nome: payload.nome, concluido: 0 }, ...shoppingList]);
+      setNewShoppingItem('');
+    }
+  };
+
+  const handleToggleShoppingItem = async (id, currentStatus) => {
+    const newStatus = currentStatus ? 0 : 1;
+    setShoppingList(shoppingList.map(item => item.id === id ? { ...item, concluido: newStatus } : item));
+    try {
+      await fetch(`https://ancora-app-1.onrender.com/api/shopping/${id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ concluido: newStatus })
+      });
+    } catch (err) {}
+  };
+
+  const handleDeleteShoppingItem = async (id) => {
+    setShoppingList(shoppingList.filter(item => item.id !== id));
+    try {
+      await fetch(`https://ancora-app-1.onrender.com/api/shopping/${id}`, { method: 'DELETE' });
+    } catch (err) {}
   };
 
   return (
@@ -1824,17 +1924,154 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 5: APOIO */}
-        {activeTab === 'apoio' && (
+        {/* TAB 5: ALIMENTAÇÃO */}
+        {activeTab === 'alimentacao' && (
           <div className="space-y-6 animate-fadeIn">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">🤍 Apoio & Recuperação</h1>
+              <h1 className="text-2xl font-bold tracking-tight">Alimentação</h1>
+              <p className="text-xs text-gray-500 mt-1">Organize suas refeições e não esqueça nada no mercado.</p>
             </div>
 
-            <div className={`p-5 rounded-[24px] border bg-white dark:bg-[#211D2F] space-y-4`}>
-              <h3 className="font-bold text-sm text-[#9F86FF]">Plano de Emergência Ativo:</h3>
-              <p className="text-xs leading-relaxed italic text-gray-600">"{recoveryPlan.vulnerableReminder}"</p>
+            {/* SEÇÃO 1: PLANEJAMENTO DE REFEIÇÕES */}
+            <div className="space-y-4">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-[#9F86FF] mb-2">Planejamento Diário</h2>
+              
+              {mealTypes.map(type => {
+                const currentMeals = meals[type] || [];
+                return (
+                  <div key={type} className={`p-4 rounded-[20px] border shadow-sm transition-all ${theme === 'dark' ? 'bg-[#211D2F] border-[#2C2638]' : 'bg-white border-[#EDE7F6]'}`}>
+                    <h3 className={`font-bold text-sm uppercase tracking-wider mb-3 pb-2 border-b ${theme === 'dark' ? 'border-[#2C2638] text-gray-200' : 'border-[#EDE7F6] text-gray-700'}`}>
+                      {type}
+                    </h3>
+                    
+                    <div className="space-y-2 mb-3">
+                      {currentMeals.length === 0 ? (
+                        <p className="text-[11px] text-gray-400 italic py-1">Nenhum alimento adicionado.</p>
+                      ) : (
+                        currentMeals.map((m) => (
+                          <div key={m.id}>
+                            {editingMeal?.id === m.id ? (
+                              <div className="flex items-center space-x-2 mt-1">
+                                <input
+                                  type="text"
+                                  value={editingMeal.name}
+                                  onChange={(e) => setEditingMeal({ ...editingMeal, name: e.target.value })}
+                                  className={`flex-1 p-2 rounded-lg text-xs border ${theme === 'dark' ? 'bg-[#181622] border-[#2C2638] text-white' : 'bg-[#F8F8FA] border-gray-200'}`}
+                                />
+                                <input
+                                  type="text"
+                                  value={editingMeal.amount}
+                                  onChange={(e) => setEditingMeal({ ...editingMeal, amount: e.target.value })}
+                                  className={`w-20 p-2 rounded-lg text-xs border ${theme === 'dark' ? 'bg-[#181622] border-[#2C2638] text-white' : 'bg-[#F8F8FA] border-gray-200'}`}
+                                />
+                                <button onClick={() => handleEditMeal(type, m.id)} className="text-emerald-500 hover:text-emerald-600 p-1"><Save className="w-4 h-4" /></button>
+                                <button onClick={() => setEditingMeal(null)} className="text-gray-400 hover:text-red-400 p-1"><X className="w-4 h-4" /></button>
+                              </div>
+                            ) : (
+                              <div className={`flex items-center justify-between p-2.5 rounded-xl border ${theme === 'dark' ? 'bg-[#181622] border-[#2C2638]' : 'bg-gray-50 border-gray-200'}`}>
+                                <div className="flex items-center space-x-2 overflow-hidden">
+                                  <span className="text-xs font-medium">{m.nome}</span>
+                                  {m.quantidade && <span className="text-[10px] text-gray-400 bg-gray-200/50 dark:bg-white/5 px-2 py-0.5 rounded-full">{m.quantidade}</span>}
+                                </div>
+                                <div className="flex items-center space-x-1 pl-2">
+                                  <button onClick={() => setEditingMeal({ id: m.id, name: m.nome, amount: m.quantidade, type })} className="p-1.5 text-gray-400 hover:text-[#9F86FF] transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => handleDeleteMeal(type, m.id)} className="p-1.5 text-gray-400 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {newMealItem.type === type ? (
+                      <div className="flex items-center space-x-2 pt-1 border-t border-dashed border-[#EDE7F6] dark:border-[#2C2638] mt-2">
+                        <input
+                          type="text" placeholder="Alimento..." value={newMealItem.name}
+                          onChange={(e) => setNewMealItem({ ...newMealItem, name: e.target.value })}
+                          className={`flex-1 p-2 rounded-[10px] text-xs border ${theme === 'dark' ? 'bg-[#181622] border-[#2C2638] text-white' : 'bg-white border-[#C8B6FF]'}`}
+                          autoFocus
+                        />
+                        <input
+                          type="text" placeholder="Qtd..." value={newMealItem.amount}
+                          onChange={(e) => setNewMealItem({ ...newMealItem, amount: e.target.value })}
+                          className={`w-20 p-2 rounded-[10px] text-xs border ${theme === 'dark' ? 'bg-[#181622] border-[#2C2638] text-white' : 'bg-white border-[#C8B6FF]'}`}
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddMeal(type)}
+                        />
+                        <button onClick={() => handleAddMeal(type)} className="bg-[#9F86FF] text-white p-2 rounded-[10px]"><Check className="w-4 h-4" /></button>
+                        <button onClick={() => setNewMealItem({ type: null, name: '', amount: '' })} className={`p-2 rounded-[10px] ${theme === 'dark' ? 'bg-[#2C2638] text-gray-400' : 'bg-gray-200 text-gray-500'}`}><X className="w-4 h-4" /></button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => setNewMealItem({ type: type, name: '', amount: '' })}
+                        className={`w-full py-2 flex items-center justify-center space-x-1 text-[11px] font-bold text-[#9F86FF] transition-colors rounded-xl ${theme === 'dark' ? 'bg-[#2C2638] hover:bg-[#3D3554]' : 'bg-[#EDE7F6] hover:bg-[#C8B6FF] hover:text-white'}`}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Adicionar Item</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+
+            {/* SEÇÃO 2: LISTA DE COMPRAS ESTILO GOOGLE KEEP */}
+            <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-[#2C2638]">
+              <div className="flex items-center space-x-2 mb-2">
+                <ShoppingCart className="w-4 h-4 text-[#9F86FF]" />
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#9F86FF]">Lista de Compras</h2>
+              </div>
+
+              {/* Caixa Rápida para Adicionar */}
+              <form onSubmit={handleAddShoppingItem} className={`relative flex items-center border rounded-[16px] overflow-hidden shadow-sm transition-all focus-within:ring-2 ring-[#C8B6FF] ${theme === 'dark' ? 'bg-[#211D2F] border-[#2C2638]' : 'bg-white border-[#EDE7F6]'}`}>
+                <Plus className="w-5 h-5 text-gray-400 absolute left-3" />
+                <input
+                  type="text"
+                  placeholder="Adicionar item à lista..."
+                  value={newShoppingItem}
+                  onChange={(e) => setNewShoppingItem(e.target.value)}
+                  className={`w-full py-3.5 pl-10 pr-4 text-sm bg-transparent outline-none ${theme === 'dark' ? 'text-white placeholder-gray-500' : 'text-gray-800 placeholder-gray-400'}`}
+                />
+              </form>
+
+              {/* Itens Pendentes */}
+              <div className="space-y-1">
+                {shoppingList.filter(item => !item.concluido).map((item) => (
+                  <div key={item.id} className="flex items-center justify-between group py-1.5 px-1">
+                    <div className="flex items-center space-x-3 cursor-pointer flex-1" onClick={() => handleToggleShoppingItem(item.id, item.concluido)}>
+                      <Circle className="w-5 h-5 text-gray-300 dark:text-gray-500 hover:text-[#9F86FF] transition-colors" />
+                      <span className="text-sm font-medium">{item.nome}</span>
+                    </div>
+                    <button onClick={() => handleDeleteShoppingItem(item.id)} className="text-gray-300 hover:text-red-400 transition-colors p-1"><X className="w-4 h-4" /></button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Divisor de Itens Concluídos */}
+              {shoppingList.some(item => item.concluido) && (
+                <div className="pt-3">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className={`h-px flex-1 ${theme === 'dark' ? 'bg-[#2C2638]' : 'bg-gray-200'}`}></div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">Concluídos</span>
+                    <div className={`h-px flex-1 ${theme === 'dark' ? 'bg-[#2C2638]' : 'bg-gray-200'}`}></div>
+                  </div>
+                  
+                  {/* Itens Concluídos (Estilo Tachado) */}
+                  <div className="space-y-1 opacity-60">
+                    {shoppingList.filter(item => item.concluido).map((item) => (
+                      <div key={item.id} className="flex items-center justify-between py-1 px-1">
+                        <div className="flex items-center space-x-3 cursor-pointer flex-1" onClick={() => handleToggleShoppingItem(item.id, item.concluido)}>
+                          <CheckCircle2 className="w-5 h-5 text-[#9F86FF]" />
+                          <span className="text-sm font-medium line-through text-gray-500">{item.nome}</span>
+                        </div>
+                        <button onClick={() => handleDeleteShoppingItem(item.id)} className="text-gray-300 hover:text-red-400 transition-colors p-1"><X className="w-4 h-4" /></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 
@@ -1900,6 +2137,7 @@ export default function App() {
             { id: 'checkin', label: 'Check-in', icon: Calendar },
             { id: 'desafios', label: 'Desafios', icon: Sparkles },
             { id: 'treino', label: 'Treinos', icon: Dumbbell },
+            { id: 'alimentacao', label: 'Dieta', icon: Utensils },
             { id: 'apoio', label: 'Apoio', icon: Heart }
           ].map((tab) => {
             const ActiveIcon = tab.icon;
