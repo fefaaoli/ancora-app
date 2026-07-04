@@ -153,10 +153,13 @@ app.post('/api/workouts/items', (req, res) => {
     const { dia_semana, text } = req.body;
     db.query(
         'INSERT INTO itens_treino (usuario_id, dia_semana, texto) VALUES (1, ?, ?)',
-        [dia_semana, text || ''],
+        [dia_semana, text],
         (err, result) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ id: result.insertId, text: text || '' });
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: err.message });
+            }
+            res.json({ id: result.insertId, text });
         }
     );
 });
