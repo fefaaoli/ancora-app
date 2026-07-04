@@ -181,14 +181,25 @@ export default function App() {
       }
 
       // 7. Buscar Treinos (Aba Nova)
-      const resWork = await fetch('https://ancora-app-1.onrender.com/api/workouts', { signal: controller.signal });
-      if (resWork.ok) {
-        const data = await resWork.json();
-        setWorkouts(prev => prev.map(w => {
-          const server = data.find(item => item.dia_semana === w.id);
-          return server ? { ...w, exercise: server.exercicio, completed: !!server.concluido } : w;
-        }));
-      }
+      const resWorkouts = await fetch('https://ancora-app-1.onrender.com/api/workouts', { signal: controller.signal });
+      const workoutsData = await resWorkouts.json();
+
+      // 8. Buscar TODOS os itens de treino
+      const resItems = await fetch('https://ancora-app-1.onrender.com/api/workouts/items', { signal: controller.signal });
+      const itemsData = await resItems.json();
+
+      // 9. Mesclar os dados
+      setWorkouts(prev => prev.map(w => {
+        const serverWorkout = workoutsData.find(item => item.dia_semana === w.id);
+        const itemsForDay = itemsData.filter(i => i.dia_semana === w.id);
+        
+        return {
+          ...w,
+          exercise: serverWorkout ? serverWorkout.exercicio : '',
+          completed: serverWorkout ? !!serverWorkout.concluido_dia : false,
+          items: itemsForDay.length > 0 ? itemsForDay : []
+        };
+      }));
 
       clearTimeout(timeoutId);
       setDbStatus('connected');

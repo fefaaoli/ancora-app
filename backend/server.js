@@ -149,11 +149,52 @@ app.post('/api/victories', (req, res) => {
     });
 });
 
-app.post('/api/workouts/items', (req, res) => {
-    const { dia_semana, text } = req.body;
+// ROTA GET PARA BUSCAR OS TREINOS (A rota que estava faltando)
+app.get('/api/workouts', (req, res) => {
+    db.query('SELECT * FROM workouts WHERE user_id = 1', (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+app.post('/api/workouts', (req, res) => {
+    const { day_of_week, exercise } = req.body;
+    const sql = `
+        INSERT INTO workouts (user_id, day_of_week, exercise, completed_day)
+        VALUES (1, ?, ?, 0)
+        ON DUPLICATE KEY UPDATE exercise = VALUES(exercise)
+    `;
+    db.query(sql, [day_of_week, exercise], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Workout saved!" });
+    });
+});
+
+app.put('/api/workouts/status/:day_of_week', (req, res) => {
+    const { completed_day } = req.body;
     db.query(
-        'INSERT INTO itens_treino (usuario_id, dia_semana, texto) VALUES (1, ?, ?)',
-        [dia_semana, text],
+        'UPDATE workouts SET completed_day = ? WHERE user_id = 1 AND day_of_week = ?',
+        [completed_day ? 1 : 0, req.params.day_of_week],
+        (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: "Status updated!" });
+        }
+    );
+});
+
+// ROTA GET PARA BUSCAR TODOS OS ITENS DE TREINO
+app.get('/api/workouts/items', (req, res) => {
+    db.query('SELECT * FROM workout_items WHERE user_id = 1', (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+app.post('/api/workouts/items', (req, res) => {
+    const { day_of_week, text } = req.body;
+    db.query(
+        'INSERT INTO workout_items (user_id, day_of_week, text) VALUES (1, ?, ?)',
+        [day_of_week, text],
         (err, result) => {
             if (err) {
                 console.error(err);
@@ -167,47 +208,22 @@ app.post('/api/workouts/items', (req, res) => {
 app.put('/api/workouts/items/:id', (req, res) => {
     const { text } = req.body;
     db.query(
-        'UPDATE itens_treino SET texto = ? WHERE id = ? AND usuario_id = 1',
+        'UPDATE workout_items SET text = ? WHERE id = ? AND user_id = 1',
         [text, req.params.id],
         (err) => {
             if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: "Exercício atualizado!" });
+            res.json({ message: "Exercise updated!" });
         }
     );
 });
 
 app.delete('/api/workouts/items/:id', (req, res) => {
     db.query(
-        'DELETE FROM itens_treino WHERE id = ? AND usuario_id = 1',
+        'DELETE FROM workout_items WHERE id = ? AND user_id = 1',
         [req.params.id],
         (err) => {
             if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: "Exercício removido!" });
-        }
-    );
-});
-
-app.post('/api/workouts', (req, res) => {
-    const { dia_semana, exercicio } = req.body;
-    const sql = `
-        INSERT INTO treinos (usuario_id, dia_semana, exercicio, concluido_dia)
-        VALUES (1, ?, ?, 0)
-        ON DUPLICATE KEY UPDATE exercicio = VALUES(exercicio)
-    `;
-    db.query(sql, [dia_semana, exercicio], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: "Treino salvo!" });
-    });
-});
-
-app.put('/api/workouts/status/:dia_semana', (req, res) => {
-    const { concluido_dia } = req.body;
-    db.query(
-        'UPDATE treinos SET concluido_dia = ? WHERE usuario_id = 1 AND dia_semana = ?',
-        [concluido_dia ? 1 : 0, req.params.dia_semana],
-        (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: "Status atualizado!" });
+            res.json({ message: "Exercise removed!" });
         }
     );
 });
