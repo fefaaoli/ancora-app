@@ -149,41 +149,64 @@ app.post('/api/victories', (req, res) => {
     });
 });
 
-// Buscar todos os treinos
-app.get('/api/workouts', (req, res) => {
-    db.query('SELECT * FROM treinos WHERE usuario_id = 1', (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(results);
-    });
-});
-
-// Salvar/Editar treino de um dia específico
-app.post('/api/workouts', (req, res) => {
-    const { dia_semana, exercicio, concluido } = req.body;
-    const sql = `INSERT INTO treinos (usuario_id, dia_semana, titulo_dia, exercicio, prescricao, obs_descanso, concluido_dia) 
-                    VALUES (1, ?, ?, ?, ?, ?, ?)`;
-        db.query(sql, [dia_semana, titulo_dia, exercicio, prescricao, obs_descanso, concluido_dia ? 1 : 0], (err) => {
+app.post('/api/workouts/items', (req, res) => {
+    const { dia_semana, text } = req.body;
+    db.query(
+        'INSERT INTO itens_treino (usuario_id, dia_semana, texto) VALUES (1, ?, ?)',
+        [dia_semana, text || ''],
+        (err, result) => {
             if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: "Salvo!" });
-        });
-    });
+            res.json({ id: result.insertId, text: text || '' });
+        }
+    );
+});
 
-// Deletar um exercício específico pelo ID
-app.delete('/api/workouts/:id', (req, res) => {
-    db.query('DELETE FROM treinos WHERE id = ?', [req.params.id], (err) => {
+app.put('/api/workouts/items/:id', (req, res) => {
+    const { text } = req.body;
+    db.query(
+        'UPDATE itens_treino SET texto = ? WHERE id = ? AND usuario_id = 1',
+        [text, req.params.id],
+        (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: "Exercício atualizado!" });
+        }
+    );
+});
+
+app.delete('/api/workouts/items/:id', (req, res) => {
+    db.query(
+        'DELETE FROM itens_treino WHERE id = ? AND usuario_id = 1',
+        [req.params.id],
+        (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: "Exercício removido!" });
+        }
+    );
+});
+
+app.post('/api/workouts', (req, res) => {
+    const { dia_semana, exercicio } = req.body;
+    const sql = `
+        INSERT INTO treinos (usuario_id, dia_semana, exercicio, concluido_dia)
+        VALUES (1, ?, ?, 0)
+        ON DUPLICATE KEY UPDATE exercicio = VALUES(exercicio)
+    `;
+    db.query(sql, [dia_semana, exercicio], (err) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: "Exercício removido!" });
+        res.json({ message: "Treino salvo!" });
     });
 });
 
-// Atualizar apenas o status de conclusão do dia
 app.put('/api/workouts/status/:dia_semana', (req, res) => {
     const { concluido_dia } = req.body;
-    db.query('UPDATE treinos SET concluido_dia = ? WHERE dia_semana = ?', 
-    [concluido_dia ? 1 : 0, req.params.dia_semana], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: "Status do dia atualizado!" });
-    });
+    db.query(
+        'UPDATE treinos SET concluido_dia = ? WHERE usuario_id = 1 AND dia_semana = ?',
+        [concluido_dia ? 1 : 0, req.params.dia_semana],
+        (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: "Status atualizado!" });
+        }
+    );
 });
 
 app.get('/api/challenges', (req, res) => {

@@ -405,21 +405,97 @@ export default function App() {
     }
   };
 
-  const handleDeleteExercise = async (id) => {
-  try {
-    await fetch(`https://ancora-app-1.onrender.com/api/workouts/${id}`, { method: 'DELETE' });
-    fetchAllData(); // Recarrega a lista
-    triggerNotification("Exercício removido!");
-  } catch (err) { console.error(err); }
-};
+  // 1. Criar novo exercício: Salva no banco primeiro, usa o ID retornado
+  const addExerciseItem = async (dayId) => {
+    try {
+      const response = await fetch('https://ancora-app-1.onrender.com/api/workouts/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dia_semana: dayId, text: '' })
+      });
+      
+      const data = await response.json();
+      
+      // Atualiza o estado com o ID real que veio do banco
+      setWorkouts(prev => prev.map(day => 
+        day.id === dayId ? { ...day, items: [...day.items, { id: data.id, text: '' }] } : day
+      ));
+    } catch (err) {
+      console.error("Erro ao criar exercício:", err);
+      triggerNotification("Erro ao criar exercício no servidor.");
+    }
+  };
 
+  // 2. Atualizar texto do exercício: Mantive o otimista, mas com tratamento de erro
+  const updateExerciseItem = async (dayId, itemId, newText) => {
+    // Atualiza localmente
+    setWorkouts(prev => prev.map(day => day.id === dayId ? {
+      ...day, 
+      items: day.items.map(i => i.id === itemId ? {...i, text: newText} : i)
+    } : day));
+    
+    try {
+      await fetch(`https://ancora-app-1.onrender.com/api/workouts/items/${itemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: newText })
+      });
+    } catch (err) { 
+      console.error("Erro ao salvar exercício:", err); 
+    }
+  };
+
+  // 3. Atualizar Título do dia
+  const updateWorkoutDay = async (id, newExerciseTitle) => {
+    setWorkouts(prev => prev.map(w => w.id === id ? {...w, exercise: newExerciseTitle} : w));
+    
+    try {
+      await fetch(`https://ancora-app-1.onrender.com/api/workouts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dia_semana: id, exercicio: newExerciseTitle })
+      });
+    } catch (err) { 
+      console.error("Erro ao salvar nome do treino:", err); 
+    }
+  };
+
+  // 4. Excluir exercício: Corrigido o endpoint para apontar para a rota de itens
+  const handleDeleteExercise = async (itemId) => {
+    try {
+      // Corrigido: o endpoint deve ser o de items
+      await fetch(`https://ancora-app-1.onrender.com/api/workouts/items/${itemId}`, { 
+        method: 'DELETE' 
+      });
+      
+      // Atualiza localmente o estado para não precisar recarregar tudo do banco
+      setWorkouts(prev => prev.map(day => ({
+        ...day,
+        items: day.items.filter(item => item.id !== itemId)
+      })));
+      
+      triggerNotification("Exercício removido!");
+    } catch (err) { 
+      console.error(err); 
+      triggerNotification("Erro ao remover exercício.");
+    }
+  };
+
+  // 5. Toggle de conclusão
   const toggleDayComplete = async (dia_semana, currentStatus) => {
-    await fetch(`https://ancora-app-1.onrender.com/api/workouts/status/${dia_semana}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ concluido_dia: !currentStatus })
-    });
-    fetchAllData();
+    try {
+      await fetch(`https://ancora-app-1.onrender.com/api/workouts/status/${dia_semana}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ concluido_dia: !currentStatus })
+      });
+      
+      // Atualização otimista
+      setWorkouts(prev => prev.map(w => w.id === dia_semana ? {...w, completed: !currentStatus} : w));
+    } catch (err) {
+      console.error(err);
+      triggerNotification("Erro ao atualizar status.");
+    }
   };
 
   const progressPercent = Math.min(100, (calculatedMetrics.currentStreak / targetDays) * 100);
@@ -1614,53 +1690,72 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'treino' && (
-          <div className="space-y-6 animate-fadeIn">
-            <h1 className="text-2xl font-bold">Divisão de Treino</h1>
-            {workouts.map((w) => (
-              <div key={w.id} className={`p-5 rounded-[24px] border shadow-sm ${theme === 'dark' ? 'bg-[#211D2F] border-[#2C2638]' : 'bg-white border-[#EDE7F6]'}`}>
-                {/* Título do dia + Check */}
-                <div className="flex items-center gap-3 mb-4">
-                  <button 
-                    onClick={() => toggleDayComplete(w.id)}
-                    className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${w.completed ? 'bg-[#9F86FF] border-[#9F86FF]' : 'border-gray-300'}`}
-                  >
-                    {w.completed && <Check className="w-4 h-4 text-white" />}
-                  </button>
-                  <input 
-                    className="font-bold text-lg bg-transparent outline-none flex-1"
-                    placeholder={`${w.day}: Treino de...`}
-                    value={w.exercise}
-                    onChange={(e) => setWorkouts(workouts.map(item => item.id === w.id ? {...item, exercise: e.target.value} : item))}
-                  />
-                </div>
+{activeTab === 'treino' && (
+  <div className="space-y-6 animate-fadeIn">
+    <h1 className="text-2xl font-bold">Divisão de Treino</h1>
+    {workouts.map((w) => (
+      <div 
+        key={w.id} 
+        className={`p-5 rounded-[24px] border shadow-sm ${theme === 'dark' ? 'bg-[#211D2F] border-[#2C2638]' : 'bg-white border-[#EDE7F6]'}`}
+      >
+        {/* Título do dia */}
+        <div className="flex items-center gap-3 mb-4">
+          <button 
+            onClick={() => toggleDayComplete(w.id, w.completed)}
+            className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${w.completed ? 'bg-[#9F86FF] border-[#9F86FF]' : 'border-gray-300'}`}
+          >
+            {w.completed && <Check className="w-4 h-4 text-white" />}
+          </button>
+          <input 
+            className="font-bold text-lg bg-transparent outline-none flex-1"
+            placeholder={`${w.day}: Treino de...`}
+            value={w.exercise || ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              setWorkouts(prev => prev.map(item => item.id === w.id ? {...item, exercise: val} : item));
+            }}
+            onBlur={(e) => updateWorkoutDay(w.id, e.target.value)}
+          />
+        </div>
 
-                {/* Lista de Exercícios */}
-                <div className="space-y-2">
-                  {w.items.map((item) => (
-                    <div key={item.id} className="flex items-center gap-2 pl-10 group">
-                      <div className="w-2 h-2 rounded-full bg-[#C8B6FF]"></div>
-                      <input 
-                        className="w-full text-sm bg-transparent outline-none"
-                        value={item.text}
-                        onChange={(e) => { /* lógica de update */ }}
-                      />
-                      <button onClick={() => handleDeleteExercise(item.id)} className="opacity-0 group-hover:opacity-100 text-red-400">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                  <button 
-                    onClick={() => setWorkouts(workouts.map(day => day.id === w.id ? {...day, items: [...day.items, {id: Date.now(), text: ''}]} : day))}
-                    className="text-[10px] text-[#9F86FF] font-bold flex items-left"
-                  >
-                    <Plus className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Lista de Exercícios */}
+        <div className="space-y-2">
+          {w.items.map((item) => (
+            <div key={item.id} className="flex items-center gap-2 pl-10 group">
+              <div className="w-2 h-2 rounded-full bg-[#C8B6FF]"></div>
+              <input 
+                className="w-full text-sm bg-transparent outline-none"
+                placeholder="Novo exercício..."
+                value={item.text || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setWorkouts(prev => prev.map(day => day.id === w.id ? {
+                    ...day, 
+                    items: day.items.map(i => i.id === item.id ? {...i, text: val} : i)
+                  } : day));
+                }}
+                onBlur={(e) => updateExerciseItem(w.id, item.id, e.target.value)}
+              />
+              <button 
+                onClick={() => handleDeleteExercise(item.id)} 
+                className="opacity-0 group-hover:opacity-100 text-red-400 p-1 hover:bg-red-50 rounded"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+          
+          <button 
+            onClick={() => addExerciseItem(w.id)}
+            className="text-[10px] text-[#9F86FF] font-bold flex items-center mt-2 gap-1 px-10"
+          >
+            <Plus className="w-3 h-3" /> Adicionar Exercício
+          </button>
+        </div>
+      </div>
+    ))}
+  </div>
+)}
 
         {/* TAB 5: APOIO */}
         {activeTab === 'apoio' && (
