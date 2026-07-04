@@ -21,7 +21,11 @@ import {
   Dumbbell,
   Save,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Utensils,
+  ShoppingCart,
+  CheckCircle2,
+  Circle
 } from 'lucide-react';
 
 const MOTIVATIONAL_QUOTES = [
@@ -2137,7 +2141,7 @@ export default function App() {
             { id: 'checkin', label: 'Check-in', icon: Calendar },
             { id: 'desafios', label: 'Desafios', icon: Sparkles },
             { id: 'treino', label: 'Treinos', icon: Dumbbell },
-            { id: 'alimentacao', label: 'Dieta', icon: Heart }
+            { id: 'alimentacao', label: 'Alimentação', icon: Utensils }
           ].map((tab) => {
             const ActiveIcon = tab.icon;
             const isActive = activeTab === tab.id;
