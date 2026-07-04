@@ -1715,7 +1715,7 @@ export default function App() {
                   <div key={day} className={`p-4 rounded-[20px] border shadow-sm transition-all ${theme === 'dark' ? 'bg-[#211D2F] border-[#2C2638]' : 'bg-white border-[#EDE7F6]'}`}>
                     
                     {/* Cabeçalho do Dia */}
-                    <div className="flex flex-col mb-4 border-b border-[#EDE7F6] dark:border-[#2C2638] pb-3">
+                    <div className={`flex flex-col mb-4 border-b pb-3 ${theme === 'dark' ? 'border-[#2C2638]' : 'border-[#EDE7F6]'}`}>
                       <h3 className="font-bold text-sm text-[#9F86FF] uppercase tracking-wider mb-1">{day}</h3>
                       
                       {editingDay === day ? (
