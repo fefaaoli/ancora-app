@@ -17,7 +17,8 @@ import {
   User,
   Coffee,
   Compass,
-  Info
+  Info,
+  Dumbbell
 } from 'lucide-react';
 
 const MOTIVATIONAL_QUOTES = [
@@ -33,6 +34,16 @@ export default function App() {
   const [theme, setTheme] = useState('light'); 
   const [showSos, setShowSos] = useState(false);
   const [userName, setUserName] = useState("Maria");
+
+const [workouts, setWorkouts] = useState([
+    { id: 0, day: 'Domingo', exercise: '', completed: false },
+    { id: 1, day: 'Segunda', exercise: '', completed: false },
+    { id: 2, day: 'Terça', exercise: '', completed: false },
+    { id: 3, day: 'Quarta', exercise: '', completed: false },
+    { id: 4, day: 'Quinta', exercise: '', completed: false },
+    { id: 5, day: 'Sexta', exercise: '', completed: false },
+    { id: 6, day: 'Sábado', exercise: '', completed: false },
+  ]);
   
   const [dbStatus, setDbStatus] = useState('connecting'); // connected, connecting, offline
   const [checkIns, setCheckIns] = useState([]);
@@ -156,7 +167,7 @@ export default function App() {
         })));
       }
 
-      // 6. Buscar Pequenas Vitórias
+// 6. Buscar Pequenas Vitórias
       const resVic = await fetch('https://ancora-app-1.onrender.com/api/victories', { signal: controller.signal }); 
       if (resVic.ok) {
         const data = await resVic.json();
@@ -167,6 +178,16 @@ export default function App() {
           description: v.descricao || v.description || '',
           category: v.categoria || v.category || 'Gatilho'
         })));
+      }
+
+      // 7. Buscar Treinos (Aba Nova)
+      const resWork = await fetch('https://ancora-app-1.onrender.com/api/workouts', { signal: controller.signal });
+      if (resWork.ok) {
+        const data = await resWork.json();
+        setWorkouts(prev => prev.map(w => {
+          const server = data.find(item => item.dia_semana === w.id);
+          return server ? { ...w, exercise: server.exercicio, completed: !!server.concluido } : w;
+        }));
       }
 
       clearTimeout(timeoutId);
@@ -1576,26 +1597,42 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 4: INSIGHTS */}
-        {activeTab === 'insights' && (
-          <div className="space-y-6 animate-fadeIn">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Meus Insights</h1>
-              <p className="text-xs text-gray-500 mt-1">Conectando dados gentis para revelar seus padrões de vitória.</p>
-            </div>
+{/* TAB NOVA: TREINO */}
+{activeTab === 'treino' && (
+  <div className="space-y-6 animate-fadeIn">
+    <div>
+      <h1 className="text-2xl font-bold tracking-tight">Divisão de Treino</h1>
+      <p className="text-xs text-gray-500 mt-1">Organize sua rotina de exercícios semanal.</p>
+    </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className={`p-4 rounded-[20px] border ${theme === 'dark' ? 'bg-[#211D2F] border-[#2C2638]' : 'bg-white border-[#EDE7F6]'}`}>
-                <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Sequência Atual</span>
-                <span className="block text-2xl font-bold text-[#9F86FF] mt-1">{calculatedMetrics.currentStreak} dias</span>
-              </div>
-              <div className={`p-4 rounded-[20px] border ${theme === 'dark' ? 'bg-[#211D2F] border-[#2C2638]' : 'bg-white border-[#EDE7F6]'}`}>
-                <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Humor Médio</span>
-                <span className="block text-2xl font-bold text-[#9F86FF] mt-1">😌 Tranquilo</span>
-              </div>
-            </div>
+    <div className="space-y-3">
+      {workouts.map((w) => (
+        <div key={w.id} className={`p-4 rounded-[20px] border shadow-sm flex items-center gap-4 ${
+          theme === 'dark' ? 'bg-[#211D2F] border-[#2C2638]' : 'bg-white border-[#EDE7F6]'
+        }`}>
+          <button 
+            onClick={() => handleUpdateWorkout(w.id, w.exercise, !w.completed)}
+            className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
+              w.completed ? 'bg-[#9F86FF] border-[#9F86FF] text-white' : 'border-gray-300'
+            }`}
+          >
+            {w.completed && <Check className="w-4 h-4" />}
+          </button>
+          <div className="flex-1">
+            <span className="block text-[10px] font-bold text-[#9F86FF] uppercase tracking-widest">{w.day}</span>
+            <input 
+              className="w-full bg-transparent text-sm outline-none mt-1"
+              placeholder="Ex: Treino de pernas..."
+              value={w.exercise}
+              onBlur={(e) => handleUpdateWorkout(w.id, e.target.value, w.completed)}
+              onChange={(e) => setWorkouts(workouts.map(item => item.id === w.id ? {...item, exercise: e.target.value} : item))}
+            />
           </div>
-        )}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
         {/* TAB 5: APOIO */}
         {activeTab === 'apoio' && (
@@ -1672,7 +1709,7 @@ export default function App() {
             { id: 'inicio', label: 'Início', icon: Home },
             { id: 'checkin', label: 'Check-in', icon: Calendar },
             { id: 'desafios', label: 'Desafios', icon: Sparkles },
-            { id: 'insights', label: 'Insights', icon: TrendingUp },
+            { id: 'treino', label: 'Treinos', icon: Dumbbell },
             { id: 'apoio', label: 'Apoio', icon: Heart }
           ].map((tab) => {
             const ActiveIcon = tab.icon;

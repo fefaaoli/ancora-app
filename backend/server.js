@@ -149,6 +149,28 @@ app.post('/api/victories', (req, res) => {
     });
 });
 
+// Buscar todos os treinos
+app.get('/api/workouts', (req, res) => {
+    db.query('SELECT * FROM treinos WHERE usuario_id = 1', (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+// Salvar/Editar treino de um dia específico
+app.post('/api/workouts', (req, res) => {
+    const { dia_semana, exercicio, concluido } = req.body;
+    const sql = `
+        INSERT INTO treinos (usuario_id, dia_semana, exercicio, concluido)
+        VALUES (1, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE exercicio=?, concluido=?
+    `;
+    db.query(sql, [dia_semana, exercicio, concluido ? 1 : 0, exercicio, concluido ? 1 : 0], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Treino salvo!" });
+    });
+});
+
 app.get('/api/challenges', (req, res) => {
     db.query('SELECT * FROM desafios WHERE usuario_id = 1 ORDER BY id DESC', (err, challenges) => {
         if (err) return res.status(500).json({ error: err.message });
