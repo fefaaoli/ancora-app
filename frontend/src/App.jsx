@@ -119,6 +119,88 @@ export default function App() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000);
 
+      // 1. Buscar Check-ins
+      const resCheck = await fetch('https://ancora-app-1.onrender.com/api/checkins', { signal: controller.signal });
+      if (resCheck.ok) {
+        const data = await resCheck.json();
+        setCheckIns(data);
+      }
+      
+      // 2. Buscar Episódios
+      const resEp = await fetch('https://ancora-app-1.onrender.com/api/episodes', { signal: controller.signal }); 
+      if (resEp.ok) {
+        const data = await resEp.json();
+        setEpisodes(data);
+      }
+
+      // 3. Buscar Desafios Reais
+      const resChall = await fetch('https://ancora-app-1.onrender.com/api/challenges', { signal: controller.signal }); 
+      if (resChall.ok) {
+        const data = await resChall.json();
+        setChallenges(data);
+      }
+
+      // 4. Buscar Plano de Recuperação
+      const resPlan = await fetch('https://ancora-app-1.onrender.com/api/recovery-plan', { signal: controller.signal }); 
+      if (resPlan.ok) {
+        const data = await resPlan.json();
+        if (data && data.usuario_id) {
+          setRecoveryPlan({
+            triggers: data.gatilhos || '',
+            helpers: data.ajudas || '',
+            difficultTimes: data.horarios_dificeis || '',
+            reasonToHeal: data.motivo || '',
+            vulnerableReminder: data.lembrete || ''
+          });
+        }
+      }
+
+      // 5. Buscar Diário
+      const resDiary = await fetch('https://ancora-app-1.onrender.com/api/diary', { signal: controller.signal }); 
+      if (resDiary.ok) {
+        const data = await resDiary.json();
+        setDiaryEntries(data.map(d => ({
+          id: d.id,
+          date: d.data ? d.data.split('T')[0] : d.date,
+          text: d.texto || d.text || '',
+          prompt: d.prompt || ''
+        })));
+      }
+
+      // 6. Buscar Pequenas Vitórias
+      const resVic = await fetch('https://ancora-app-1.onrender.com/api/victories', { signal: controller.signal }); 
+      if (resVic.ok) {
+        const data = await resVic.json();
+        setSmallVictories(data.map(v => ({
+          id: v.id,
+          date: v.data ? v.data.split('T')[0] : v.date,
+          title: v.titulo || v.title || '',
+          description: v.descricao || v.description || '',
+          category: v.categoria || v.category || 'Gatilho'
+        })));
+      }
+
+      // 7. Buscar Treinos (Aba Nova)
+      const resWorkouts = await fetch('https://ancora-app-1.onrender.com/api/workouts', { signal: controller.signal });
+      const workoutsData = await resWorkouts.json();
+
+      // 8. Buscar TODOS os itens de treino
+      const resItems = await fetch('https://ancora-app-1.onrender.com/api/workouts/items', { signal: controller.signal });
+      const itemsData = await resItems.json();
+
+      // 9. Mesclar os dados
+      setWorkouts(prev => prev.map(w => {
+        const serverWorkout = workoutsData.find(item => item.dia_semana === w.id);
+        const itemsForDay = itemsData.filter(i => i.dia_semana === w.id);
+        
+        return {
+          ...w,
+          exercise: serverWorkout ? serverWorkout.exercicio : '',
+          completed: serverWorkout ? !!serverWorkout.concluido_dia : false,
+          items: itemsForDay.length > 0 ? itemsForDay : []
+        };
+      }));
+
       clearTimeout(timeoutId);
       setDbStatus('connected');
     } catch (err) {
